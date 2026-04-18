@@ -19,15 +19,15 @@ app.listen(process.env.PORT || 3000);
 
 // 📦 LOAD FILES
 let keys = JSON.parse(fs.readFileSync("keys.json"));
-let data = JSON.parse(fs.readFileSync("data.json")); // NEW
+let data = JSON.parse(fs.readFileSync("data.json"));
 
 // 💎 PLANS
 const plans = {
-  plan1: { name: "💎 1 DAY - 100₹", days: 1 },
-  plan2: { name: "💎 7 DAY - 400₹", days: 7 },
-  plan3: { name: "💎 15 DAY - 700₹", days: 15 },
-  plan4: { name: "💎 30 DAY - 900₹", days: 30 },
-  plan5: { name: "💎 60 DAY - 1200₹", days: 60 }
+  plan1: { name: "⏩ 1 DAY - 100₹", days: 1 },
+  plan2: { name: "⏩ 7 DAY - 400₹", days: 7 },
+  plan3: { name: "⏩ 15 DAY - 700₹", days: 15 },
+  plan4: { name: "⏩ 30 DAY - 900₹", days: 30 },
+  plan5: { name: "⏩ 60 DAY - 1200₹", days: 60 }
 };
 
 let userPlan = {};
@@ -145,7 +145,7 @@ bot.on("callback_query",(query)=>{
   const dataBtn = query.data;
   const userId = query.from.id;
 
-  // PLAN SELECT
+  // PLAN SELECT (UPDATED 🔥)
   if(dataBtn.startsWith("buy_")){
     let planId = dataBtn.split("_")[1];
 
@@ -155,10 +155,18 @@ bot.on("callback_query",(query)=>{
       caption:
 `💰 PAYMENT DETAILS
 
+💎 SELECTED PLAN:
+👉 ${plans[planId].name}
+
+━━━━━━━━━━━━━━
 👤 ${PAYMENT_NAME}
 
 UPI:
 \`${UPI_ID}\`
+━━━━━━━━━━━━━━
+
+⚠️ NOTE:
+👉 ऊपर दिखाए गए plan के लिए ही payment करें
 
 👇 CHOOSE OPTION`,
       parse_mode:"Markdown",
@@ -184,7 +192,7 @@ UPI:
 {reply_markup:{force_reply:true}});
   }
 
-  // ✅ VERIFY
+  // VERIFY
   if(dataBtn.startsWith("approve_")){
     let uid = dataBtn.split("_")[1];
     let plan = userPlan[uid];
@@ -203,7 +211,6 @@ UPI:
     let expiry = new Date();
     expiry.setDate(expiry.getDate()+plan.days);
 
-    // 🔥 SAVE DATA
     data.sold.push({
       user: uid,
       key: key,
@@ -232,13 +239,13 @@ UPI:
 {parse_mode:"Markdown"});
   }
 
-  // ❌ REJECT
+  // REJECT
   if(dataBtn.startsWith("reject_")){
     let uid = dataBtn.split("_")[1];
     bot.sendMessage(uid,"❌ PAYMENT REJECTED\n⚠️ Try Again");
   }
 
-  // 📊 LIVE STOCK PANEL
+  // LIVE STOCK
   if(dataBtn==="livestock"){
     let msg = "📊 LIVE STOCK PANEL\n\n";
 
@@ -280,7 +287,7 @@ UPI:
   }
 });
 
-// ADMIN COMMAND
+// ADMIN
 bot.onText(/\/admin/, (msg)=>{
   if(msg.from.id!==ADMIN_ID) return;
 
