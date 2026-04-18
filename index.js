@@ -32,6 +32,7 @@ const plans = {
 let userPlan = {};
 let selectedPlan = {};
 let requestCount = {};
+let waitingUTR = {};
 
 // 🚀 START
 bot.onText(/\/start/, (msg) => {
@@ -55,11 +56,58 @@ bot.onText(/\/start/, (msg) => {
   });
 });
 
-// 💬 MESSAGE
+// 💬 MESSAGE HANDLER
 bot.on("message", (msg) => {
+
+  // 🧾 UTR INPUT MODE
+  if (waitingUTR[msg.from.id]) {
+
+    const userId = msg.from.id;
+    const plan = userPlan[userId];
+    if (!plan) return;
+
+    if (!requestCount[userId]) requestCount[userId] = 0;
+
+    if (requestCount[userId] >= 3) {
+      bot.sendMessage(msg.chat.id, "❌ LIMIT REACHED (3 TIMES ONLY)");
+      return;
+    }
+
+    requestCount[userId]++;
+    waitingUTR[userId] = false;
+
+    let planName = Object.keys(plans).find(p => plans[p].id === plan.id);
+
+    bot.sendMessage(ADMIN_ID,
+`📥 PAYMENT REQUEST
+
+👤 USER: ${userId}
+💎 PLAN: ${planName}
+
+🧾 UTR:
+${msg.text}
+
+🔁 ATTEMPT: ${requestCount[userId]}/3`,
+    {
+      reply_markup: {
+        inline_keyboard: [[
+          { text: "✅ VERIFY", callback_data: `approve_${userId}` },
+          { text: "❌ REJECT", callback_data: `reject_${userId}` }
+        ]]
+      }
+    });
+
+    bot.sendMessage(msg.chat.id,
+`⏳ PLEASE WAIT...
+
+ADMIN VERIFY YOUR PAYMENT`);
+
+    return;
+  }
 
   // ➕ ADMIN STOCK ADD
   if (selectedPlan[msg.from.id]) {
+
     let plan = selectedPlan[msg.from.id];
     let lines = msg.text.split("\n");
 
@@ -80,6 +128,7 @@ bot.on("message", (msg) => {
 
   // 💎 PLAN SELECT
   if (plans[msg.text]) {
+
     userPlan[msg.from.id] = plans[msg.text];
 
     bot.sendPhoto(msg.chat.id, QR_LINK, {
@@ -89,79 +138,36 @@ bot.on("message", (msg) => {
 🏦 UPI ID: ${UPI_ID}
 
 ━━━━━━━━━━━━━━━━━━
-📌 SCAN QR & PAY  
-📩 SEND SCREENSHOT / UTR  
-━━━━━━━━━━━━━━━━━━`
+📌 SCAN QR & PAY
+━━━━━━━━━━━━━━━━━━
+
+👇 AFTER PAYMENT CLICK BELOW`,
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "💸 SUBMIT UTR", callback_data: "enter_utr" }]
+        ]
+      }
     });
+
     return;
-  }
-
-  // 📥 PAYMENT REQUEST
-  if (msg.text !== "/start") {
-
-    const userId = msg.from.id;
-    const plan = userPlan[userId];
-    if (!plan) return;
-
-    if (!requestCount[userId]) requestCount[userId] = 0;
-
-    if (requestCount[userId] >= 3) {
-      bot.sendMessage(msg.chat.id, "❌ LIMIT REACHED (3 TIMES ONLY)");
-      return;
-    }
-
-    requestCount[userId]++;
-
-    let planName = Object.keys(plans).find(p => plans[p].id === plan.id);
-
-    // 📸 SCREENSHOT
-    if (msg.photo) {
-
-      let photoId = msg.photo[msg.photo.length - 1].file_id;
-
-      bot.sendPhoto(ADMIN_ID, photoId, {
-        caption:
-`📥 PAYMENT REQUEST
-
-👤 USER: ${userId}
-💎 PLAN: ${planName}
-📸 SCREENSHOT RECEIVED
-🔁 ATTEMPT: ${requestCount[userId]}/3`,
-        reply_markup: {
-          inline_keyboard: [[
-            { text: "✅ VERIFY", callback_data: `approve_${userId}` },
-            { text: "❌ REJECT", callback_data: `reject_${userId}` }
-          ]]
-        }
-      });
-
-    } else {
-
-      bot.sendMessage(ADMIN_ID,
-`📥 PAYMENT REQUEST
-
-👤 USER: ${userId}
-💎 PLAN: ${planName}
-📝 MSG: ${msg.text}
-🔁 ATTEMPT: ${requestCount[userId]}/3`,
-      {
-        reply_markup: {
-          inline_keyboard: [[
-            { text: "✅ VERIFY", callback_data: `approve_${userId}` },
-            { text: "❌ REJECT", callback_data: `reject_${userId}` }
-          ]]
-        }
-      });
-    }
-
-    bot.sendMessage(msg.chat.id, "⏳ WAITING FOR VERIFICATION...");
   }
 });
 
-// 🔘 BUTTON
+// 🔘 BUTTON HANDLER
 bot.on("callback_query", (query) => {
 
   const data = query.data;
+
+  // 💸 ENTER UTR
+  if (data === "enter_utr") {
+
+    waitingUTR[query.from.id] = true;
+
+    bot.sendMessage(query.message.chat.id,
+`🧾 ENTER YOUR UTR NUMBER:
+
+Example: 1234567890`);
+  }
 
   // ✅ VERIFY
   if (data.startsWith("approve_")) {
@@ -240,6 +246,7 @@ OTHERWISE YOU MAY BE BLOCKED`);
 
   // ➕ ADD STOCK
   if (data === "addstock") {
+
     bot.sendMessage(query.message.chat.id,
 `💎 SELECT PLAN`,
     {
@@ -257,6 +264,7 @@ OTHERWISE YOU MAY BE BLOCKED`);
 
   // PLAN SELECT
   if (data.startsWith("plan")) {
+
     selectedPlan[query.from.id] = data;
 
     bot.sendMessage(query.message.chat.id,
