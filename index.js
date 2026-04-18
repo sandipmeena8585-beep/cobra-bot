@@ -2,10 +2,9 @@ const TelegramBot = require('node-telegram-bot-api');
 const express = require("express");
 const fs = require("fs");
 
-const token = "8304628992:AAFANNXH6syLC1FIuHxKeYd8MIyaWXNTXg4";
+const token = "8304628992:AAFANNXH6syLC1FIuHxKeYd8MIyaWXNTXg4"; // ⚠️ change this
 const ADMIN_ID = 7707237527;
 
-// ✅ 220px QR (UPDATED)
 const QR_LINK = "https://images.weserv.nl/?url=raw.githubusercontent.com/sandipmeena8585-beep/cobra-bot/main/upi_qr.png&w=220&h=220";
 
 const UPI_ID = "godxcobra@axl";
@@ -39,16 +38,16 @@ let waitingScreenshot = {};
 // 🔥 MENU
 function showMenu(chatId) {
   bot.sendMessage(chatId,
-`🔥 𝗖𝗢𝗕𝗥𝗔 𝗩𝗜𝗣 𝗣𝗔𝗡𝗘𝗟 🔥
+`🔥 COBRA VIP PANEL 🔥
 
-💎 𝐏𝐑𝐄𝐌𝐈𝐔𝐌 𝐊𝐄𝐘 𝐒𝐓𝐎𝐑𝐄
+💎 PREMIUM KEY STORE
 
 ━━━━━━━━━━━━━━━━━━
-⚡ 𝙵𝙰𝚂𝚃 𝙳𝙴𝙻𝙸𝚅𝙴𝚁𝚈
-🔐 𝚂𝙴𝙲𝚄𝚁𝙴 𝙰𝙲𝙲𝙴𝚂𝚂
+⚡ FAST DELIVERY
+🔐 SECURE ACCESS
 ━━━━━━━━━━━━━━━━━━
 
-👇 𝐒𝐄𝐋𝐄𝐂𝐓 𝐘𝐎𝐔𝐑 𝐏𝐋𝐀𝐍`,
+👇 SELECT YOUR PLAN`,
   {
     reply_markup: {
       inline_keyboard: [
@@ -73,6 +72,12 @@ bot.on("message",(msg)=>{
 
   // 📸 SCREENSHOT
   if(waitingScreenshot[userId] && msg.photo){
+
+    if(!userPlan[userId]){
+      bot.sendMessage(userId,"⚠️ No active plan\nSelect again");
+      return;
+    }
+
     let plan = userPlan[userId];
 
     bot.sendPhoto(ADMIN_ID, msg.photo[msg.photo.length-1].file_id, {
@@ -96,6 +101,12 @@ PLAN: ${plan.name}`,
 
   // 🧾 UTR
   if(msg.reply_to_message && msg.reply_to_message.text.includes("ENTER YOUR UTR")){
+
+    if(!userPlan[userId]){
+      bot.sendMessage(userId,"⚠️ No active plan\nSelect again");
+      return;
+    }
+
     let plan = userPlan[userId];
 
     bot.sendMessage(ADMIN_ID,
@@ -147,8 +158,13 @@ bot.on("callback_query",(query)=>{
   const dataBtn = query.data;
   const userId = query.from.id;
 
-  // PLAN SELECT
+  // 🚫 BLOCK MULTIPLE REQUEST
   if(dataBtn.startsWith("buy_")){
+    if(userPlan[userId]){
+      bot.answerCallbackQuery(query.id,{text:"⚠️ Complete previous payment"});
+      return;
+    }
+
     let planId = dataBtn.split("_")[1];
 
     userPlan[userId] = { ...plans[planId], id: planId };
@@ -159,15 +175,13 @@ bot.on("callback_query",(query)=>{
 
 👤 ${PAYMENT_NAME}
 
-💎 SELECTED PLAN:
+💎 PLAN:
 👉 ${plans[planId].name}
 
 ━━━━━━━━━━━━━━
 UPI:
 \`${UPI_ID}\`
-━━━━━━━━━━━━━━
-
-👇 CHOOSE OPTION`,
+━━━━━━━━━━━━━━`,
       parse_mode:"Markdown",
       reply_markup:{
         inline_keyboard:[
@@ -195,15 +209,20 @@ UPI:
   if(dataBtn.startsWith("approve_")){
     let uid = dataBtn.split("_")[1];
     let plan = userPlan[uid];
+
+    if (!plan) {
+      bot.answerCallbackQuery(query.id,{text:"⚠️ Already Done"});
+      return;
+    }
+
     const planId = plan.id;
 
     if (!keys[planId] || keys[planId].length === 0) {
-      bot.sendMessage(ADMIN_ID, `❌ STOCK EMPTY: ${plan.name}`);
+      bot.sendMessage(ADMIN_ID, `❌ STOCK EMPTY`);
       return;
     }
 
     let key = keys[planId].shift();
-
     fs.writeFileSync("keys.json",JSON.stringify(keys,null,2));
 
     let expiry = new Date();
@@ -218,37 +237,53 @@ UPI:
 
     fs.writeFileSync("data.json", JSON.stringify(data,null,2));
 
+    // 🔥 REMOVE BUTTON
+    bot.editMessageReplyMarkup(
+      { inline_keyboard: [] },
+      {
+        chat_id: query.message.chat.id,
+        message_id: query.message.message_id
+      }
+    );
+
+    delete userPlan[uid];
+
     bot.sendMessage(uid,
 `✅ VERIFIED
 
-━━━━━━━━━━━━━━
 🔑 KEY:
 \`${key}\`
 
 📅 ${expiry.toDateString()}
-━━━━━━━━━━━━━━
 
-🚀 COBRA SERVER MOD
-
-🔗 ${CHANNEL_LINK}
-
-🎉 Enjoy 🚀`,
+🔗 ${CHANNEL_LINK}`,
 {parse_mode:"Markdown"});
   }
 
   // ❌ REJECT
   if(dataBtn.startsWith("reject_")){
     let uid = dataBtn.split("_")[1];
-    bot.sendMessage(uid,"❌ PAYMENT REJECTED\n⚠️ Try Again");
+
+    bot.editMessageReplyMarkup(
+      { inline_keyboard: [] },
+      {
+        chat_id: query.message.chat.id,
+        message_id: query.message.message_id
+      }
+    );
+
+    delete userPlan[uid];
+
+    bot.sendMessage(uid,"❌ PAYMENT REJECTED\nTry Again");
   }
 
-  // 📊 LIVE STOCK PANEL
+  // 📊 LIVE STOCK
   if(dataBtn==="livestock"){
-    let msg = "📊 LIVE STOCK PANEL\n\n";
+    let msg = "📊 LIVE STOCK\n\n";
 
     Object.keys(plans).forEach(p=>{
       msg += `${plans[p].name}\n`;
-      msg += `🟢 Available: ${keys[p].length}\n\n`;
+      msg += `🟢 ${keys[p].length}\n\n`;
     });
 
     bot.sendMessage(userId,msg);
