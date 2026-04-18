@@ -33,6 +33,7 @@ let userPlan = {};
 let selectedPlan = {};
 let requestCount = {};
 let waitingUTR = {};
+let tempUTR = {};
 
 // 🚀 START
 bot.onText(/\/start/, (msg) => {
@@ -56,56 +57,37 @@ bot.onText(/\/start/, (msg) => {
   });
 });
 
-// 💬 MESSAGE HANDLER
+// 💬 MESSAGE
 bot.on("message", (msg) => {
 
-  // 🧾 UTR INPUT MODE
+  // 🧾 STEP 1: UTR INPUT
   if (waitingUTR[msg.from.id]) {
 
     const userId = msg.from.id;
     const plan = userPlan[userId];
     if (!plan) return;
 
-    if (!requestCount[userId]) requestCount[userId] = 0;
-
-    if (requestCount[userId] >= 3) {
-      bot.sendMessage(msg.chat.id, "❌ LIMIT REACHED (3 TIMES ONLY)");
-      return;
-    }
-
-    requestCount[userId]++;
     waitingUTR[userId] = false;
-
-    let planName = Object.keys(plans).find(p => plans[p].id === plan.id);
-
-    bot.sendMessage(ADMIN_ID,
-`📥 PAYMENT REQUEST
-
-👤 USER: ${userId}
-💎 PLAN: ${planName}
-
-🧾 UTR:
-${msg.text}
-
-🔁 ATTEMPT: ${requestCount[userId]}/3`,
-    {
-      reply_markup: {
-        inline_keyboard: [[
-          { text: "✅ VERIFY", callback_data: `approve_${userId}` },
-          { text: "❌ REJECT", callback_data: `reject_${userId}` }
-        ]]
-      }
-    });
+    tempUTR[userId] = msg.text;
 
     bot.sendMessage(msg.chat.id,
-`⏳ PLEASE WAIT...
+`🧾 UTR ENTERED:
 
-ADMIN VERIFY YOUR PAYMENT`);
+${msg.text}
+
+👇 CLICK SUBMIT`,
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "✅ SUBMIT", callback_data: "submit_utr" }]
+        ]
+      }
+    });
 
     return;
   }
 
-  // ➕ ADMIN STOCK ADD
+  // ➕ ADMIN STOCK
   if (selectedPlan[msg.from.id]) {
 
     let plan = selectedPlan[msg.from.id];
@@ -120,7 +102,7 @@ ADMIN VERIFY YOUR PAYMENT`);
     bot.sendMessage(msg.chat.id,
 `✅ STOCK UPDATED
 
-📦 ${plan.toUpperCase()} ➜ ${keys[plan].length} KEYS`);
+📦 ${plan.toUpperCase()} ➜ ${keys[plan].length}`);
 
     selectedPlan[msg.from.id] = null;
     return;
@@ -167,6 +149,53 @@ bot.on("callback_query", (query) => {
 `🧾 ENTER YOUR UTR NUMBER:
 
 Example: 1234567890`);
+  }
+
+  // ✅ FINAL SUBMIT
+  if (data === "submit_utr") {
+
+    const userId = query.from.id;
+    const plan = userPlan[userId];
+    const utr = tempUTR[userId];
+
+    if (!plan || !utr) return;
+
+    if (!requestCount[userId]) requestCount[userId] = 0;
+
+    if (requestCount[userId] >= 3) {
+      bot.sendMessage(userId, "❌ LIMIT REACHED (3 TIMES)");
+      return;
+    }
+
+    requestCount[userId]++;
+
+    let planName = Object.keys(plans).find(p => plans[p].id === plan.id);
+
+    bot.sendMessage(ADMIN_ID,
+`📥 PAYMENT REQUEST
+
+👤 USER: ${userId}
+💎 PLAN: ${planName}
+
+🧾 UTR:
+${utr}
+
+🔁 ATTEMPT: ${requestCount[userId]}/3`,
+    {
+      reply_markup: {
+        inline_keyboard: [[
+          { text: "✅ VERIFY", callback_data: `approve_${userId}` },
+          { text: "❌ REJECT", callback_data: `reject_${userId}` }
+        ]]
+      }
+    });
+
+    bot.sendMessage(userId,
+`⏳ PLEASE WAIT...
+
+ADMIN VERIFY YOUR PAYMENT`);
+
+    tempUTR[userId] = null;
   }
 
   // ✅ VERIFY
@@ -229,8 +258,7 @@ ${CHANNEL_LINK}
     bot.sendMessage(userId,
 `❌ PAYMENT REJECTED
 
-⚠️ SEND CORRECT PAYMENT PROOF
-OTHERWISE YOU MAY BE BLOCKED`);
+⚠️ SEND CORRECT PAYMENT PROOF`);
 
     bot.sendMessage(ADMIN_ID, `❌ REJECTED USER: ${userId}`);
   }
@@ -246,7 +274,6 @@ OTHERWISE YOU MAY BE BLOCKED`);
 
   // ➕ ADD STOCK
   if (data === "addstock") {
-
     bot.sendMessage(query.message.chat.id,
 `💎 SELECT PLAN`,
     {
@@ -262,7 +289,7 @@ OTHERWISE YOU MAY BE BLOCKED`);
     });
   }
 
-  // PLAN SELECT
+  // PLAN SELECT (ADMIN)
   if (data.startsWith("plan")) {
 
     selectedPlan[query.from.id] = data;
