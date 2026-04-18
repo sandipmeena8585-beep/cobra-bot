@@ -5,7 +5,9 @@ const fs = require("fs");
 const token = "8304628992:AAFANNXH6syLC1FIuHxKeYd8MIyaWXNTXg4";
 const ADMIN_ID = 7707237527;
 
-const QR_LINK = "https://raw.githubusercontent.com/sandipmeena8585-beep/cobra-bot/main/upi_qr.png";
+// ✅ 220px QR (UPDATED)
+const QR_LINK = "https://images.weserv.nl/?url=raw.githubusercontent.com/sandipmeena8585-beep/cobra-bot/main/upi_qr.png&w=220&h=220";
+
 const UPI_ID = "godxcobra@axl";
 const CHANNEL_LINK = "https://t.me/+wRZN39fdVcRkYTM9";
 const PAYMENT_NAME = "SANDIP MEENA";
@@ -23,11 +25,11 @@ let data = JSON.parse(fs.readFileSync("data.json"));
 
 // 💎 PLANS
 const plans = {
-  plan1: { name: "⏩ 1 DAY - 100₹", days: 1 },
-  plan2: { name: "⏩ 7 DAY - 400₹", days: 7 },
-  plan3: { name: "⏩ 15 DAY - 700₹", days: 15 },
-  plan4: { name: "⏩ 30 DAY - 900₹", days: 30 },
-  plan5: { name: "⏩ 60 DAY - 1200₹", days: 60 }
+  plan1: { name: "🗝️ 1 DAY - 100₹", days: 1 },
+  plan2: { name: "🗝️ 7 DAY - 400₹", days: 7 },
+  plan3: { name: "🗝️ 15 DAY - 700₹", days: 15 },
+  plan4: { name: "🗝️ 30 DAY - 900₹", days: 30 },
+  plan5: { name: "🗝️ 60 DAY - 1200₹", days: 60 }
 };
 
 let userPlan = {};
@@ -39,11 +41,11 @@ function showMenu(chatId) {
   bot.sendMessage(chatId,
 `🔥 COBRA VIP PANEL 🔥
 
-💎 PREMIUM STORE
+💪 𝗣𝗥𝗘𝗠𝗜𝗨𝗠 𝗦𝗧𝗢𝗥𝗘
 
 ━━━━━━━━━━━━━━━━━━
-⚡ FAST DELIVERY
-🔐 SECURE ACCESS
+⚡ 𝗙𝗔𝗦𝗧 𝗗𝗘𝗟𝗜𝗩𝗘𝗥𝗬
+🔐 𝗦𝗘𝗖𝗨𝗥𝗘 𝗔𝗖𝗖𝗘𝗦𝗦
 ━━━━━━━━━━━━━━━━━━
 
 👇 SELECT YOUR PLAN`,
@@ -145,7 +147,7 @@ bot.on("callback_query",(query)=>{
   const dataBtn = query.data;
   const userId = query.from.id;
 
-  // PLAN SELECT (UPDATED 🔥)
+  // PLAN SELECT
   if(dataBtn.startsWith("buy_")){
     let planId = dataBtn.split("_")[1];
 
@@ -155,18 +157,15 @@ bot.on("callback_query",(query)=>{
       caption:
 `💰 PAYMENT DETAILS
 
+👤 ${PAYMENT_NAME}
+
 💎 SELECTED PLAN:
 👉 ${plans[planId].name}
 
 ━━━━━━━━━━━━━━
-👤 ${PAYMENT_NAME}
-
 UPI:
 \`${UPI_ID}\`
 ━━━━━━━━━━━━━━
-
-⚠️ NOTE:
-👉 ऊपर दिखाए गए plan के लिए ही payment करें
 
 👇 CHOOSE OPTION`,
       parse_mode:"Markdown",
@@ -192,7 +191,7 @@ UPI:
 {reply_markup:{force_reply:true}});
   }
 
-  // VERIFY
+  // ✅ VERIFY
   if(dataBtn.startsWith("approve_")){
     let uid = dataBtn.split("_")[1];
     let plan = userPlan[uid];
@@ -207,7 +206,6 @@ UPI:
 
     fs.writeFileSync("keys.json",JSON.stringify(keys,null,2));
 
-    let now = new Date();
     let expiry = new Date();
     expiry.setDate(expiry.getDate()+plan.days);
 
@@ -215,7 +213,6 @@ UPI:
       user: uid,
       key: key,
       plan: plan.name,
-      date: now.toISOString(),
       expiry: expiry.toISOString()
     });
 
@@ -235,32 +232,23 @@ UPI:
 
 🔗 ${CHANNEL_LINK}
 
-🎉 Enjoy, Have a Nice Day 🚀`,
+🎉 Enjoy 🚀`,
 {parse_mode:"Markdown"});
   }
 
-  // REJECT
+  // ❌ REJECT
   if(dataBtn.startsWith("reject_")){
     let uid = dataBtn.split("_")[1];
     bot.sendMessage(uid,"❌ PAYMENT REJECTED\n⚠️ Try Again");
   }
 
-  // LIVE STOCK
+  // 📊 LIVE STOCK PANEL
   if(dataBtn==="livestock"){
     let msg = "📊 LIVE STOCK PANEL\n\n";
 
     Object.keys(plans).forEach(p=>{
       msg += `${plans[p].name}\n`;
       msg += `🟢 Available: ${keys[p].length}\n\n`;
-    });
-
-    msg += "━━━━━━━━━━━━━━\n📦 LAST SOLD\n\n";
-
-    data.sold.slice(-10).reverse().forEach(s=>{
-      msg += `👤 ${s.user}\n`;
-      msg += `💎 ${s.plan}\n`;
-      msg += `🔑 ${s.key}\n`;
-      msg += `⏳ Exp: ${new Date(s.expiry).toDateString()}\n\n`;
     });
 
     bot.sendMessage(userId,msg);
@@ -287,7 +275,7 @@ UPI:
   }
 });
 
-// ADMIN
+// ADMIN COMMAND
 bot.onText(/\/admin/, (msg)=>{
   if(msg.from.id!==ADMIN_ID) return;
 
