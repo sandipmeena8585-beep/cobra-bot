@@ -15,54 +15,39 @@ const bot = new TelegramBot(token, { polling: true });
 
 // SERVER
 const app = express();
-app.get("/", (req,res)=>res.send("COBRA SERVER MOD RUNNING"));
+app.get("/", (req,res)=>res.send("Running"));
 app.listen(process.env.PORT || 3000);
 
-// SAFE LOAD
-function load(file, def){
-  try{
-    if(!fs.existsSync(file)){
-      fs.writeFileSync(file, JSON.stringify(def,null,2));
-      return def;
-    }
-    return JSON.parse(fs.readFileSync(file));
-  }catch{
-    return def;
-  }
-}
+// FILE LOAD
+let keys = JSON.parse(fs.readFileSync("keys.json"));
+let data = JSON.parse(fs.readFileSync("data.json"));
 
-let keys = load("keys.json", {
-  plan1:[], plan2:[], plan3:[], plan4:[], plan5:[]
-});
-
-let data = load("data.json", { sold: [] });
-
-// PLANS
+// 🔥 UPDATED PLANS ONLY
 const plans = {
-  plan1: { name: "1 HOUR - ₹30", hours: 1 },
-  plan2: { name: "3 HOUR - ₹50", hours: 3 },
-  plan3: { name: "5 HOUR - ₹80", hours: 5 },
-  plan4: { name: "1 DAY - ₹120", days: 1 },
-  plan5: { name: "7 DAY - ₹400", days: 7 }
+  plan1: { name: "1 HOUR - 30₹", hours: 1 },
+  plan2: { name: "3 HOUR - 50₹", hours: 3 },
+  plan3: { name: "5 HOUR - 80₹", hours: 5 },
+  plan4: { name: "1 DAY - 120₹", days: 1 },
+  plan5: { name: "7 DAY - 400₹", days: 7 }
 };
 
 let userPlan = {};
+let selectedPlan = {};
 let waitingScreenshot = {};
 
-// 🔥 MENU (SOLID COBRA STYLE)
+// MENU
 function showMenu(chatId) {
   bot.sendMessage(chatId,
-`COBRA SERVER MOD
+`🔥 COBRA VIP PANEL 🔥
 
-COBRA PANEL
+💪 PREMIUM STORE
 
------------------------------
-FAST DELIVERY
-SECURE ACCESS
-INSTANT ACTIVATION
------------------------------
+━━━━━━━━━━━━━━━━━━
+⚡ FAST DELIVERY
+🔐 SECURE ACCESS
+━━━━━━━━━━━━━━━━━━
 
-SELECT YOUR PLAN`,
+👇 SELECT YOUR PLAN`,
   {
     reply_markup: {
       inline_keyboard: [
@@ -88,22 +73,22 @@ bot.on("message",(msg)=>{
   // SCREENSHOT
   if(waitingScreenshot[userId] && msg.photo){
     let plan = userPlan[userId];
-    if(!plan) return;
 
     bot.sendPhoto(ADMIN_ID, msg.photo[msg.photo.length-1].file_id, {
-      caption: `PAYMENT PROOF
+      caption:
+`📸 PAYMENT PROOF
 
-USER ID: ${userId}
+USER: ${userId}
 PLAN: ${plan.name}`,
       reply_markup:{
         inline_keyboard:[[
-          {text:"VERIFY",callback_data:`approve_${userId}`},
-          {text:"REJECT",callback_data:`reject_${userId}`}
+          {text:"✅ VERIFY",callback_data:`approve_${userId}`},
+          {text:"❌ REJECT",callback_data:`reject_${userId}`}
         ]]
       }
     });
 
-    bot.sendMessage(userId,"WAIT FOR VERIFICATION");
+    bot.sendMessage(userId,"⏳ WAIT ADMIN VERIFY");
     waitingScreenshot[userId]=false;
     return;
   }
@@ -111,25 +96,24 @@ PLAN: ${plan.name}`,
   // UTR
   if(msg.reply_to_message && msg.reply_to_message.text.includes("ENTER YOUR UTR")){
     let plan = userPlan[userId];
-    if(!plan) return;
 
     bot.sendMessage(ADMIN_ID,
-`NEW PAYMENT REQUEST
+`📥 PAYMENT REQUEST
 
-USER ID: ${userId}
+USER: ${userId}
 PLAN: ${plan.name}
 
 UTR: ${msg.text}`,
 {
   reply_markup:{
     inline_keyboard:[[
-      {text:"VERIFY",callback_data:`approve_${userId}`},
-      {text:"REJECT",callback_data:`reject_${userId}`}
+      {text:"✅ VERIFY",callback_data:`approve_${userId}`},
+      {text:"❌ REJECT",callback_data:`reject_${userId}`}
     ]]
   }
 });
 
-    bot.sendMessage(userId,"WAIT FOR VERIFICATION");
+    bot.sendMessage(userId,"⏳ WAIT ADMIN VERIFY");
     return;
   }
 
@@ -140,56 +124,57 @@ UTR: ${msg.text}`,
 
 // BUTTONS
 bot.on("callback_query",(query)=>{
+
   const dataBtn = query.data;
   const userId = query.from.id;
 
+  // PLAN SELECT
   if(dataBtn.startsWith("buy_")){
     let planId = dataBtn.split("_")[1];
+
     userPlan[userId] = { ...plans[planId], id: planId };
 
     bot.sendPhoto(userId,QR_LINK,{
-      caption: `PAYMENT DETAILS
+      caption:
+`💰 PAYMENT DETAILS
 
-NAME: ${PAYMENT_NAME}
+👤 ${PAYMENT_NAME}
 
-PLAN:
-${plans[planId].name}
+💎 SELECTED PLAN:
+👉 ${plans[planId].name}
 
------------------------------
-UPI ID:
-${UPI_ID}
------------------------------
-
-COMPLETE PAYMENT AND SUBMIT`,
+━━━━━━━━━━━━━━
+UPI:
+\`${UPI_ID}\`
+━━━━━━━━━━━━━━`,
+      parse_mode:"Markdown",
       reply_markup:{
         inline_keyboard:[
-          [{text:"SEND SCREENSHOT",callback_data:"ss"}],
-          [{text:"ENTER UTR",callback_data:"utr"}]
+          [{text:"📸 SCREENSHOT",callback_data:"screenshot"}],
+          [{text:"💳 ENTER UTR",callback_data:"enter_utr"}]
         ]
       }
     });
   }
 
-  if(dataBtn==="ss"){
+  if(dataBtn==="screenshot"){
     waitingScreenshot[userId]=true;
-    bot.sendMessage(userId,"SEND PAYMENT SCREENSHOT");
+    bot.sendMessage(userId,"📸 SEND SCREENSHOT");
   }
 
-  if(dataBtn==="utr"){
-    bot.sendMessage(userId,"ENTER YOUR UTR",{reply_markup:{force_reply:true}});
+  if(dataBtn==="enter_utr"){
+    bot.sendMessage(userId,"🧾 ENTER YOUR UTR",{reply_markup:{force_reply:true}});
   }
 
   // VERIFY
   if(dataBtn.startsWith("approve_")){
-    if(query.from.id != ADMIN_ID) return;
-
     let uid = dataBtn.split("_")[1];
     let plan = userPlan[uid];
-    if(!plan) return;
 
     let key = "COBRA-" + Math.random().toString(36).substr(2,8).toUpperCase();
 
     let expiry = new Date();
+
     if(plan.hours){
       expiry.setHours(expiry.getHours()+plan.hours);
     } else {
@@ -197,24 +182,22 @@ COMPLETE PAYMENT AND SUBMIT`,
     }
 
     bot.sendMessage(uid,
-`PAYMENT VERIFIED
+`✅ VERIFIED
 
-KEY:
+🔑 KEY:
 ${key}
 
-VALID TILL:
+⏳ VALID:
 ${expiry}
 
-JOIN:
-${CHANNEL_LINK}`);
+🔗 ${CHANNEL_LINK}`);
 
     delete userPlan[uid];
   }
 
   // REJECT
   if(dataBtn.startsWith("reject_")){
-    if(query.from.id != ADMIN_ID) return;
     let uid = dataBtn.split("_")[1];
-    bot.sendMessage(uid,"PAYMENT FAILED - TRY AGAIN");
+    bot.sendMessage(uid,"❌ PAYMENT REJECTED");
   }
 });
