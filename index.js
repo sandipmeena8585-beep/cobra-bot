@@ -5,7 +5,7 @@ const fs = require("fs");
 const token = "8304628992:AAFANNXH6syLC1FIuHxKeYd8MIyaWXNTXg4";
 const ADMIN_ID = 7707237527;
 
-const QR_LINK = "https://raw.githubusercontent.com/@GODx_COBRA/cobra-bot/main/upi_qr.png";
+const QR_LINK = "const QR_LINK = "https://raw.githubusercontent.com/sandipmeena8585-beep/cobra-bot/main/upi_qr.png";";
 
 const bot = new TelegramBot(token, { polling: true });
 
