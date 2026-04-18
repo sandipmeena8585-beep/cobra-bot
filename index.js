@@ -6,7 +6,7 @@ const token = "8304628992:AAFANNXH6syLC1FIuHxKeYd8MIyaWXNTXg4";
 const ADMIN_ID = 7707237527;
 
 // ✅ GitHub QR RAW LINK
-const QR_LINK = "https://raw.githubusercontent.com/USERNAME/cobra-bot/main/upi_qr.png";
+const QR_LINK = "https://raw.githubusercontent.com/@GODx_COBRA/cobra-bot/main/upi_qr.png";
 
 const bot = new TelegramBot(token, { polling: true });
 
