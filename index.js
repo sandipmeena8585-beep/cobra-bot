@@ -30,6 +30,7 @@ const plans = {
 
 let userPlan = {};
 let selectedPlan = {};
+let requestCount = {};
 
 // 🚀 START
 bot.onText(/\/start/, (msg) => {
@@ -56,7 +57,7 @@ bot.onText(/\/start/, (msg) => {
 // 💬 MESSAGE HANDLER
 bot.on("message", (msg) => {
 
-  // ➕ ADMIN ADD STOCK (PLAN SELECT KE BAAD)
+  // ➕ ADMIN ADD STOCK
   if (selectedPlan[msg.from.id]) {
 
     let plan = selectedPlan[msg.from.id];
@@ -77,7 +78,7 @@ ${plan}: ${keys[plan].length} KEYS`);
     return;
   }
 
-  // 💎 PLAN SELECT (USER)
+  // 💎 PLAN SELECT
   if (plans[msg.text]) {
     userPlan[msg.from.id] = plans[msg.text];
 
@@ -95,24 +96,61 @@ ${plan}: ${keys[plan].length} KEYS`);
     return;
   }
 
-  // 📥 PAYMENT REQUEST
+  // 📥 PAYMENT REQUEST (LIMIT + SCREENSHOT)
   if (msg.text !== "/start") {
 
-    const plan = userPlan[msg.from.id];
+    const userId = msg.from.id;
+    const plan = userPlan[userId];
 
-    bot.sendMessage(ADMIN_ID,
+    if (!plan) return;
+
+    if (!requestCount[userId]) requestCount[userId] = 0;
+
+    if (requestCount[userId] >= 3) {
+      bot.sendMessage(msg.chat.id, "❌ Limit reached (3 requests only)");
+      return;
+    }
+
+    requestCount[userId]++;
+
+    let planName = Object.keys(plans).find(p => plans[p].id === plan.id);
+
+    // 📸 SCREENSHOT
+    if (msg.photo) {
+
+      let photoId = msg.photo[msg.photo.length - 1].file_id;
+
+      bot.sendPhoto(ADMIN_ID, photoId, {
+        caption:
 `📥 PAYMENT REQUEST
 
-👤 User: ${msg.from.id}
-💎 Plan: ${plan ? plan.id : "unknown"}
-📝 Msg: ${msg.text}`,
-    {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: "✅ VERIFY", callback_data: `approve_${msg.from.id}` }]
-        ]
-      }
-    });
+👤 User: ${userId}
+💎 Plan: ${planName}
+🔁 Attempt: ${requestCount[userId]}/3`,
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "✅ VERIFY", callback_data: `approve_${userId}` }]
+          ]
+        }
+      });
+
+    } else {
+
+      bot.sendMessage(ADMIN_ID,
+`📥 PAYMENT REQUEST
+
+👤 User: ${userId}
+💎 Plan: ${planName}
+📝 Msg: ${msg.text}
+🔁 Attempt: ${requestCount[userId]}/3`,
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "✅ VERIFY", callback_data: `approve_${userId}` }]
+          ]
+        }
+      });
+    }
 
     bot.sendMessage(msg.chat.id, "⏳ Waiting for verification...");
   }
@@ -123,7 +161,7 @@ bot.on("callback_query", (query) => {
 
   const data = query.data;
 
-  // ✅ VERIFY PAYMENT
+  // ✅ VERIFY
   if (data.startsWith("approve_")) {
 
     const userId = data.split("_")[1];
@@ -144,7 +182,8 @@ bot.on("callback_query", (query) => {
     let expiry = new Date();
     expiry.setDate(expiry.getDate() + plan.days);
 
-    // 🔥 FINAL KEY MESSAGE (COPY FRIENDLY)
+    requestCount[userId] = 0;
+
     bot.sendMessage(userId,
 `✅ PAYMENT VERIFIED
 
@@ -157,13 +196,12 @@ bot.on("callback_query", (query) => {
 🎉 Enjoy, Have a Nice Day 🚀`,
 { parse_mode: "Markdown" });
 
-    // ⚠️ LOW STOCK ALERT
     if (keys[plan.id].length <= 1) {
       bot.sendMessage(ADMIN_ID, `⚠️ LOW STOCK: ${plan.id}`);
     }
   }
 
-  // 📦 STOCK CHECK
+  // 📦 STOCK
   if (data === "stock") {
     let msg = "📦 STOCK STATUS\n\n";
     for (let p in keys) {
@@ -172,7 +210,7 @@ bot.on("callback_query", (query) => {
     bot.sendMessage(query.message.chat.id, msg);
   }
 
-  // ➕ ADD STOCK BUTTON
+  // ➕ ADD STOCK
   if (data === "addstock") {
 
     bot.sendMessage(query.message.chat.id,
