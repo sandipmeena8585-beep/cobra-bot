@@ -40,12 +40,11 @@ bot.onText(/\/start/, (msg) => {
   bot.sendMessage(msg.chat.id,
 `🔥 COBRA VIP PANEL 🔥
 
-💎 PREMIUM ACCESS STORE
+💎 PREMIUM STORE
 
 ━━━━━━━━━━━━━━━━━━
-⚡ FAST DELIVERY  
-🔐 SECURE SYSTEM  
-💰 TRUSTED SERVICE  
+⚡ FAST DELIVERY
+🔐 SECURE SYSTEM
 ━━━━━━━━━━━━━━━━━━
 
 👇 SELECT YOUR PLAN`,
@@ -57,13 +56,14 @@ bot.onText(/\/start/, (msg) => {
   });
 });
 
-// 💬 MESSAGE
+// 💬 MESSAGE HANDLER
 bot.on("message", (msg) => {
 
-  // 🧾 STEP 1: UTR INPUT
-  if (waitingUTR[msg.from.id]) {
+  const userId = msg.from.id;
 
-    const userId = msg.from.id;
+  // 🔥 UTR INPUT (TOP PRIORITY FIX)
+  if (waitingUTR[userId] === true) {
+
     const plan = userPlan[userId];
     if (!plan) return;
 
@@ -87,10 +87,10 @@ ${msg.text}
     return;
   }
 
-  // ➕ ADMIN STOCK
-  if (selectedPlan[msg.from.id]) {
+  // ➕ ADMIN STOCK ADD
+  if (selectedPlan[userId]) {
 
-    let plan = selectedPlan[msg.from.id];
+    let plan = selectedPlan[userId];
     let lines = msg.text.split("\n");
 
     lines.forEach(key => {
@@ -104,14 +104,14 @@ ${msg.text}
 
 📦 ${plan.toUpperCase()} ➜ ${keys[plan].length}`);
 
-    selectedPlan[msg.from.id] = null;
+    selectedPlan[userId] = null;
     return;
   }
 
   // 💎 PLAN SELECT
   if (plans[msg.text]) {
 
-    userPlan[msg.from.id] = plans[msg.text];
+    userPlan[userId] = plans[msg.text];
 
     bot.sendPhoto(msg.chat.id, QR_LINK, {
       caption:
@@ -139,22 +139,24 @@ ${msg.text}
 bot.on("callback_query", (query) => {
 
   const data = query.data;
+  const userId = query.from.id;
 
   // 💸 ENTER UTR
   if (data === "enter_utr") {
 
-    waitingUTR[query.from.id] = true;
+    waitingUTR[userId] = true;
 
     bot.sendMessage(query.message.chat.id,
 `🧾 ENTER YOUR UTR NUMBER:
 
 Example: 1234567890`);
+
+    bot.answerCallbackQuery(query.id);
   }
 
   // ✅ FINAL SUBMIT
   if (data === "submit_utr") {
 
-    const userId = query.from.id;
     const plan = userPlan[userId];
     const utr = tempUTR[userId];
 
@@ -289,10 +291,10 @@ ${CHANNEL_LINK}
     });
   }
 
-  // PLAN SELECT (ADMIN)
+  // PLAN SELECT ADMIN
   if (data.startsWith("plan")) {
 
-    selectedPlan[query.from.id] = data;
+    selectedPlan[userId] = data;
 
     bot.sendMessage(query.message.chat.id,
 `➕ SEND KEYS
