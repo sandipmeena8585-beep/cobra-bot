@@ -57,9 +57,8 @@ bot.onText(/\/start/, (msg) => {
 // 💬 MESSAGE HANDLER
 bot.on("message", (msg) => {
 
-  // ➕ ADMIN ADD STOCK
+  // ➕ ADMIN STOCK ADD
   if (selectedPlan[msg.from.id]) {
-
     let plan = selectedPlan[msg.from.id];
     let lines = msg.text.split("\n");
 
@@ -69,11 +68,7 @@ bot.on("message", (msg) => {
 
     fs.writeFileSync("keys.json", JSON.stringify(keys, null, 2));
 
-    bot.sendMessage(msg.chat.id,
-`✅ STOCK UPDATED
-
-${plan}: ${keys[plan].length} KEYS`);
-
+    bot.sendMessage(msg.chat.id, `✅ STOCK UPDATED\n\n${plan}: ${keys[plan].length}`);
     selectedPlan[msg.from.id] = null;
     return;
   }
@@ -96,12 +91,11 @@ ${plan}: ${keys[plan].length} KEYS`);
     return;
   }
 
-  // 📥 PAYMENT REQUEST (LIMIT + SCREENSHOT)
+  // 📥 PAYMENT REQUEST
   if (msg.text !== "/start") {
 
     const userId = msg.from.id;
     const plan = userPlan[userId];
-
     if (!plan) return;
 
     if (!requestCount[userId]) requestCount[userId] = 0;
@@ -126,11 +120,13 @@ ${plan}: ${keys[plan].length} KEYS`);
 
 👤 User: ${userId}
 💎 Plan: ${planName}
+📸 Screenshot received
 🔁 Attempt: ${requestCount[userId]}/3`,
         reply_markup: {
-          inline_keyboard: [
-            [{ text: "✅ VERIFY", callback_data: `approve_${userId}` }]
-          ]
+          inline_keyboard: [[
+            { text: "✅ VERIFY", callback_data: `approve_${userId}` },
+            { text: "❌ REJECT", callback_data: `reject_${userId}` }
+          ]]
         }
       });
 
@@ -145,9 +141,10 @@ ${plan}: ${keys[plan].length} KEYS`);
 🔁 Attempt: ${requestCount[userId]}/3`,
       {
         reply_markup: {
-          inline_keyboard: [
-            [{ text: "✅ VERIFY", callback_data: `approve_${userId}` }]
-          ]
+          inline_keyboard: [[
+            { text: "✅ VERIFY", callback_data: `approve_${userId}` },
+            { text: "❌ REJECT", callback_data: `reject_${userId}` }
+          ]]
         }
       });
     }
@@ -166,7 +163,6 @@ bot.on("callback_query", (query) => {
 
     const userId = data.split("_")[1];
     const plan = userPlan[userId];
-
     if (!plan) return;
 
     let stock = keys[plan.id];
@@ -201,9 +197,23 @@ bot.on("callback_query", (query) => {
     }
   }
 
+  // ❌ REJECT
+  if (data.startsWith("reject_")) {
+
+    const userId = data.split("_")[1];
+
+    bot.sendMessage(userId,
+`❌ PAYMENT REJECTED
+
+⚠️ Send correct payment proof
+Otherwise you may be blocked`);
+
+    bot.sendMessage(ADMIN_ID, `❌ Rejected user: ${userId}`);
+  }
+
   // 📦 STOCK
   if (data === "stock") {
-    let msg = "📦 STOCK STATUS\n\n";
+    let msg = "📦 STOCK\n\n";
     for (let p in keys) {
       msg += `${p} ➜ ${keys[p].length}\n`;
     }
@@ -212,33 +222,30 @@ bot.on("callback_query", (query) => {
 
   // ➕ ADD STOCK
   if (data === "addstock") {
-
     bot.sendMessage(query.message.chat.id,
 `💎 SELECT PLAN`,
     {
       reply_markup: {
         inline_keyboard: [
-          [{ text: "💎 1 DAY", callback_data: "plan1" }],
-          [{ text: "💎 7 DAY", callback_data: "plan2" }],
-          [{ text: "💎 15 DAY", callback_data: "plan3" }],
-          [{ text: "💎 30 DAY", callback_data: "plan4" }],
-          [{ text: "💎 60 DAY", callback_data: "plan5" }]
+          [{ text: "1 DAY", callback_data: "plan1" }],
+          [{ text: "7 DAY", callback_data: "plan2" }],
+          [{ text: "15 DAY", callback_data: "plan3" }],
+          [{ text: "30 DAY", callback_data: "plan4" }],
+          [{ text: "60 DAY", callback_data: "plan5" }]
         ]
       }
     });
   }
 
-  // 🎯 PLAN SELECT (ADMIN)
+  // PLAN SELECT
   if (data.startsWith("plan")) {
-
     selectedPlan[query.from.id] = data;
 
     bot.sendMessage(query.message.chat.id,
 `➕ SEND KEYS
 
 Example:
-COBRASERVER>1D-AAAA
-COBRASERVER>1D-BBBB`);
+COBRASERVER>1D-AAAA`);
   }
 });
 
@@ -248,11 +255,11 @@ bot.onText(/\/admin/, (msg) => {
   if (msg.from.id !== ADMIN_ID) return;
 
   bot.sendMessage(msg.chat.id,
-`👑 ADMIN CONTROL PANEL`,
+`👑 ADMIN PANEL`,
   {
     reply_markup: {
       inline_keyboard: [
-        [{ text: "📦 CHECK STOCK", callback_data: "stock" }],
+        [{ text: "📦 STOCK", callback_data: "stock" }],
         [{ text: "➕ ADD STOCK", callback_data: "addstock" }]
       ]
     }
