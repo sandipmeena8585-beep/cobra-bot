@@ -2,22 +2,28 @@ const TelegramBot = require('node-telegram-bot-api');
 const express = require("express");
 const fs = require("fs");
 
+// 🔑 BOT CONFIG
 const token = "8304628992:AAFANNXH6syLC1FIuHxKeYd8MIyaWXNTXg4";
 const ADMIN_ID = 7707237527;
 
-const QR_LINK = "const QR_LINK = "https://raw.githubusercontent.com/sandipmeena8585-beep/cobra-bot/main/upi_qr.png";";
+// 📸 QR IMAGE LINK (GitHub RAW)
+const QR_LINK = "https://raw.githubusercontent.com/sandipmeena8585-beep/cobra-bot/main/upi_qr.png";
 
+// 💰 UPI ID
+const UPI_ID = "godxcobra@axl";
+
+// 🤖 BOT START
 const bot = new TelegramBot(token, { polling: true });
 
-// 🌐 server
+// 🌐 SERVER (Render free fix)
 const app = express();
-app.get("/", (req, res) => res.send("Running"));
+app.get("/", (req, res) => res.send("Bot Running"));
 app.listen(process.env.PORT || 3000);
 
-// 📦 load keys
+// 📦 LOAD KEYS
 let keys = JSON.parse(fs.readFileSync("keys.json"));
 
-// 💎 plans
+// 💎 PLANS
 const plans = {
   "💎 1 DAY - 100₹": { id: "plan1", days: 1 },
   "💎 7 DAY - 400₹": { id: "plan2", days: 7 },
@@ -29,7 +35,7 @@ const plans = {
 let userPlan = {};
 let adding = {};
 
-// 🚀 START
+// 🚀 START COMMAND
 bot.onText(/\/start/, (msg) => {
   bot.sendMessage(msg.chat.id,
 `🔥 COBRA VIP PANEL 🔥
@@ -50,10 +56,10 @@ bot.onText(/\/start/, (msg) => {
   });
 });
 
-// 💰 MESSAGE HANDLER
+// 💬 MESSAGE HANDLER
 bot.on("message", (msg) => {
 
-  // PLAN SELECT
+  // 📌 PLAN SELECT
   if (plans[msg.text]) {
     userPlan[msg.from.id] = plans[msg.text];
 
@@ -61,22 +67,22 @@ bot.on("message", (msg) => {
       caption:
 `💰 PAYMENT DETAILS
 
-🏦 UPI: godxcobra@axl
+🏦 UPI: ${UPI_ID}
 
 ━━━━━━━━━━━━━━━
-📌 Send Payment Screenshot / UTR
+📌 Scan QR & Pay
+📩 Send Screenshot / UTR
 ━━━━━━━━━━━━━━━`
     });
   }
 
-  // ➕ ADD KEY MODE
+  // ➕ ADMIN ADD STOCK
   else if (adding[msg.from.id]) {
 
     let lines = msg.text.split("\n");
 
     lines.forEach(line => {
       let [plan, key] = line.split(" ");
-
       if (keys[plan]) keys[plan].push(key);
     });
 
@@ -94,7 +100,7 @@ plan5: ${keys.plan5.length}`);
     adding[msg.from.id] = false;
   }
 
-  // PAYMENT PROOF
+  // 📥 PAYMENT PROOF
   else if (msg.text !== "/start") {
 
     const plan = userPlan[msg.from.id];
@@ -113,11 +119,11 @@ plan5: ${keys.plan5.length}`);
       }
     });
 
-    bot.sendMessage(msg.chat.id, "⏳ Waiting for admin verification...");
+    bot.sendMessage(msg.chat.id, "⏳ Waiting for verification...");
   }
 });
 
-// ✅ VERIFY
+// ✅ ADMIN VERIFY
 bot.on("callback_query", (query) => {
 
   const data = query.data;
@@ -139,7 +145,6 @@ bot.on("callback_query", (query) => {
     const key = stock.shift();
     fs.writeFileSync("keys.json", JSON.stringify(keys, null, 2));
 
-    // expiry
     let expiry = new Date();
     expiry.setDate(expiry.getDate() + plan.days);
 
@@ -159,7 +164,7 @@ bot.on("callback_query", (query) => {
     }
   }
 
-  // STOCK
+  // 📦 STOCK CHECK
   if (data === "stock") {
     let msg = "📦 STOCK\n\n";
     for (let p in keys) {
@@ -168,7 +173,7 @@ bot.on("callback_query", (query) => {
     bot.sendMessage(query.message.chat.id, msg);
   }
 
-  // ADD
+  // ➕ ADD STOCK
   if (data === "add") {
     if (query.from.id != ADMIN_ID) return;
 
