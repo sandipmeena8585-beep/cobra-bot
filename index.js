@@ -5,6 +5,7 @@ const fs = require("fs");
 const token = "8304628992:AAFANNXH6syLC1FIuHxKeYd8MIyaWXNTXg4";
 const ADMIN_ID = 7707237527;
 
+// ✅ 220px QR (UPDATED)
 const QR_LINK = "https://images.weserv.nl/?url=raw.githubusercontent.com/sandipmeena8585-beep/cobra-bot/main/upi_qr.png&w=220&h=220";
 
 const UPI_ID = "godxcobra@axl";
@@ -13,41 +14,41 @@ const PAYMENT_NAME = "SANDIP MEENA";
 
 const bot = new TelegramBot(token, { polling: true });
 
-// SERVER
+// 🌐 SERVER
 const app = express();
 app.get("/", (req,res)=>res.send("Running"));
 app.listen(process.env.PORT || 3000);
 
-// FILE LOAD
+// 📦 LOAD FILES
 let keys = JSON.parse(fs.readFileSync("keys.json"));
 let data = JSON.parse(fs.readFileSync("data.json"));
 
-// 🔥 UPDATED PLANS ONLY
+// 💎 PLANS
 const plans = {
-  plan1: { name: "1 HOUR - 30₹", hours: 1 },
-  plan2: { name: "3 HOUR - 50₹", hours: 3 },
-  plan3: { name: "5 HOUR - 80₹", hours: 5 },
-  plan4: { name: "1 DAY - 120₹", days: 1 },
-  plan5: { name: "7 DAY - 400₹", days: 7 }
+  plan1: { name: "🗝️ 1 DAY - 100₹", days: 1 },
+  plan2: { name: "🗝️ 7 DAY - 400₹", days: 7 },
+  plan3: { name: "🗝️ 15 DAY - 700₹", days: 15 },
+  plan4: { name: "🗝️ 30 DAY - 900₹", days: 30 },
+  plan5: { name: "🗝️ 60 DAY - 1200₹", days: 60 }
 };
 
 let userPlan = {};
 let selectedPlan = {};
 let waitingScreenshot = {};
 
-// MENU
+// 🔥 MENU
 function showMenu(chatId) {
   bot.sendMessage(chatId,
-`🔥 COBRA VIP PANEL 🔥
+`🔥 𝗖𝗢𝗕𝗥𝗔 𝗩𝗜𝗣 𝗣𝗔𝗡𝗘𝗟 🔥
 
-💪 PREMIUM STORE
+💎 𝐏𝐑𝐄𝐌𝐈𝐔𝐌 𝐊𝐄𝐘 𝐒𝐓𝐎𝐑𝐄
 
 ━━━━━━━━━━━━━━━━━━
-⚡ FAST DELIVERY
-🔐 SECURE ACCESS
+⚡ 𝙵𝙰𝚂𝚃 𝙳𝙴𝙻𝙸𝚅𝙴𝚁𝚈
+🔐 𝚂𝙴𝙲𝚄𝚁𝙴 𝙰𝙲𝙲𝙴𝚂𝚂
 ━━━━━━━━━━━━━━━━━━
 
-👇 SELECT YOUR PLAN`,
+👇 𝐒𝐄𝐋𝐄𝐂𝐓 𝐘𝐎𝐔𝐑 𝐏𝐋𝐀𝐍`,
   {
     reply_markup: {
       inline_keyboard: [
@@ -70,7 +71,7 @@ bot.onText(/\/start/, (msg)=>{
 bot.on("message",(msg)=>{
   const userId = msg.from.id;
 
-  // SCREENSHOT
+  // 📸 SCREENSHOT
   if(waitingScreenshot[userId] && msg.photo){
     let plan = userPlan[userId];
 
@@ -93,7 +94,7 @@ PLAN: ${plan.name}`,
     return;
   }
 
-  // UTR
+  // 🧾 UTR
   if(msg.reply_to_message && msg.reply_to_message.text.includes("ENTER YOUR UTR")){
     let plan = userPlan[userId];
 
@@ -117,6 +118,24 @@ UTR: ${msg.text}`,
     return;
   }
 
+  // ➕ ADMIN STOCK ADD
+  if(selectedPlan[userId]){
+    msg.text.split("\n").forEach(k=>{
+      if(k.trim()){
+        keys[selectedPlan[userId]].push(k.trim());
+      }
+    });
+
+    fs.writeFileSync("keys.json",JSON.stringify(keys,null,2));
+    bot.sendMessage(userId,
+`✅ STOCK UPDATED
+
+${selectedPlan[userId]}: ${keys[selectedPlan[userId]].length}`);
+    selectedPlan[userId]=null;
+    return;
+  }
+
+  // 🤖 AUTO MENU
   if(msg.text && !msg.text.startsWith("/")){
     showMenu(msg.chat.id);
   }
@@ -146,7 +165,9 @@ bot.on("callback_query",(query)=>{
 ━━━━━━━━━━━━━━
 UPI:
 \`${UPI_ID}\`
-━━━━━━━━━━━━━━`,
+━━━━━━━━━━━━━━
+
+👇 CHOOSE OPTION`,
       parse_mode:"Markdown",
       reply_markup:{
         inline_keyboard:[
@@ -157,47 +178,113 @@ UPI:
     });
   }
 
+  // SCREENSHOT
   if(dataBtn==="screenshot"){
     waitingScreenshot[userId]=true;
     bot.sendMessage(userId,"📸 SEND SCREENSHOT");
   }
 
+  // UTR
   if(dataBtn==="enter_utr"){
-    bot.sendMessage(userId,"🧾 ENTER YOUR UTR",{reply_markup:{force_reply:true}});
+    bot.sendMessage(userId,
+`🧾 ENTER YOUR UTR`,
+{reply_markup:{force_reply:true}});
   }
 
-  // VERIFY
+  // ✅ VERIFY
   if(dataBtn.startsWith("approve_")){
     let uid = dataBtn.split("_")[1];
     let plan = userPlan[uid];
+    const planId = plan.id;
 
-    let key = "COBRA-" + Math.random().toString(36).substr(2,8).toUpperCase();
+    if (!keys[planId] || keys[planId].length === 0) {
+      bot.sendMessage(ADMIN_ID, `❌ STOCK EMPTY: ${plan.name}`);
+      return;
+    }
+
+    let key = keys[planId].shift();
+
+    fs.writeFileSync("keys.json",JSON.stringify(keys,null,2));
 
     let expiry = new Date();
+    expiry.setDate(expiry.getDate()+plan.days);
 
-    if(plan.hours){
-      expiry.setHours(expiry.getHours()+plan.hours);
-    } else {
-      expiry.setDate(expiry.getDate()+plan.days);
-    }
+    data.sold.push({
+      user: uid,
+      key: key,
+      plan: plan.name,
+      expiry: expiry.toISOString()
+    });
+
+    fs.writeFileSync("data.json", JSON.stringify(data,null,2));
 
     bot.sendMessage(uid,
 `✅ VERIFIED
 
+━━━━━━━━━━━━━━
 🔑 KEY:
-${key}
+\`${key}\`
 
-⏳ VALID:
-${expiry}
+📅 ${expiry.toDateString()}
+━━━━━━━━━━━━━━
 
-🔗 ${CHANNEL_LINK}`);
+🚀 COBRA SERVER MOD
 
-    delete userPlan[uid];
+🔗 ${CHANNEL_LINK}
+
+🎉 Enjoy 🚀`,
+{parse_mode:"Markdown"});
   }
 
-  // REJECT
+  // ❌ REJECT
   if(dataBtn.startsWith("reject_")){
     let uid = dataBtn.split("_")[1];
-    bot.sendMessage(uid,"❌ PAYMENT REJECTED");
+    bot.sendMessage(uid,"❌ PAYMENT REJECTED\n⚠️ Try Again");
   }
+
+  // 📊 LIVE STOCK PANEL
+  if(dataBtn==="livestock"){
+    let msg = "📊 LIVE STOCK PANEL\n\n";
+
+    Object.keys(plans).forEach(p=>{
+      msg += `${plans[p].name}\n`;
+      msg += `🟢 Available: ${keys[p].length}\n\n`;
+    });
+
+    bot.sendMessage(userId,msg);
+  }
+
+  // ADMIN PANEL
+  if(dataBtn==="addstock"){
+    bot.sendMessage(userId,"SELECT PLAN",{
+      reply_markup:{
+        inline_keyboard:[
+          [{text:"1 DAY",callback_data:"plan1"}],
+          [{text:"7 DAY",callback_data:"plan2"}],
+          [{text:"15 DAY",callback_data:"plan3"}],
+          [{text:"30 DAY",callback_data:"plan4"}],
+          [{text:"60 DAY",callback_data:"plan5"}]
+        ]
+      }
+    });
+  }
+
+  if(dataBtn.startsWith("plan")){
+    selectedPlan[userId]=dataBtn;
+    bot.sendMessage(userId,"SEND KEYS (ONE PER LINE)");
+  }
+});
+
+// ADMIN COMMAND
+bot.onText(/\/admin/, (msg)=>{
+  if(msg.from.id!==ADMIN_ID) return;
+
+  bot.sendMessage(msg.chat.id,"⚙️ ADMIN PANEL",{
+    reply_markup:{
+      inline_keyboard:[
+        [{text:"➕ ADD STOCK",callback_data:"addstock"}],
+        [{text:"📊 LIVE STOCK",callback_data:"livestock"}]
+      ]
+    }
+  });
 });
