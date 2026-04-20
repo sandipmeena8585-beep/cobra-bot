@@ -2,7 +2,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const express = require("express");
 const fs = require("fs");
 
-const token = "8304628992:AAF2gzdL33mdIkBuoVMUQUbzTOQZEeUvoqI";
+const token = process.env.BOT_TOKEN || "8304628992:AAF2gzdL33mdIkBuoVMUQUbzTOQZEeUvoqI";
 const ADMIN_ID = 7707237527;
 
 const QR_LINK = "https://images.weserv.nl/?url=raw.githubusercontent.com/sandipmeena8585-beep/cobra-bot/main/upi_qr.png&w=220&h=220";
@@ -15,12 +15,24 @@ const bot = new TelegramBot(token, { polling: true });
 
 // SERVER
 const app = express();
-app.get("/", (req,res)=>res.send("Running"));
+app.get("/", (req,res)=>res.send("RUNNING"));
 app.listen(process.env.PORT || 3000);
 
-// FILE LOAD
-let keys = JSON.parse(fs.readFileSync("keys.json"));
-let data = JSON.parse(fs.readFileSync("data.json"));
+// SAFE FILE LOAD
+function loadJSON(file, def){
+  try{
+    return JSON.parse(fs.readFileSync(file));
+  }catch{
+    fs.writeFileSync(file, JSON.stringify(def,null,2));
+    return def;
+  }
+}
+
+let keys = loadJSON("keys.json",{
+  plan1:[], plan2:[], plan3:[], plan4:[], plan5:[]
+});
+
+let data = loadJSON("data.json",{ sold:[] });
 
 // PLANS
 const plans = {
@@ -36,7 +48,7 @@ let selectedPlan = {};
 let waitingScreenshot = {};
 
 // MENU
-function showMenu(chatId) {
+function showMenu(chatId){
   bot.sendMessage(chatId,
 `🔥 COBRA VIP PANEL 🔥
 
@@ -49,41 +61,32 @@ function showMenu(chatId) {
 
 👇 SELECT YOUR PLAN`,
 {
-  reply_markup: {
-    inline_keyboard: [
-      [{ text: plans.plan1.name, callback_data: "buy_plan1" }],
-      [{ text: plans.plan2.name, callback_data: "buy_plan2" }],
-      [{ text: plans.plan3.name, callback_data: "buy_plan3" }],
-      [{ text: plans.plan4.name, callback_data: "buy_plan4" }],
-      [{ text: plans.plan5.name, callback_data: "buy_plan5" }]
-    ]
+  reply_markup:{
+    inline_keyboard:Object.keys(plans).map(p=>[
+      { text: plans[p].name, callback_data: `buy_${p}` }
+    ])
   }
 });
 }
 
 // START
-bot.onText(/\/start/, (msg)=>{
-  showMenu(msg.chat.id);
-});
+bot.onText(/\/start/, (msg)=> showMenu(msg.chat.id));
 
 // MESSAGE
 bot.on("message",(msg)=>{
   const userId = msg.from.id;
 
+  // SCREENSHOT
   if(waitingScreenshot[userId] && msg.photo){
     if(!userPlan[userId]){
-      bot.sendMessage(userId,"⚠️ No active plan\nSelect again");
+      bot.sendMessage(userId,"⚠️ Select plan again");
       return;
     }
 
     let plan = userPlan[userId];
 
-    bot.sendPhoto(ADMIN_ID, msg.photo[msg.photo.length-1].file_id, {
-      caption:
-`📸 PAYMENT PROOF
-
-USER: ${userId}
-PLAN: ${plan.name}`,
+    bot.sendPhoto(ADMIN_ID, msg.photo[msg.photo.length-1].file_id,{
+      caption:`📸 PAYMENT PROOF\nUSER: ${userId}\nPLAN: ${plan.name}`,
       reply_markup:{
         inline_keyboard:[[
           {text:"✅ VERIFY",callback_data:`approve_${userId}`},
@@ -97,9 +100,10 @@ PLAN: ${plan.name}`,
     return;
   }
 
+  // UTR
   if(msg.reply_to_message && msg.reply_to_message.text.includes("ENTER YOUR UTR")){
     if(!userPlan[userId]){
-      bot.sendMessage(userId,"⚠️ No active plan\nSelect again");
+      bot.sendMessage(userId,"⚠️ Select plan again");
       return;
     }
 
@@ -125,6 +129,7 @@ UTR: ${msg.text}`,
     return;
   }
 
+  // ADD STOCK
   if(selectedPlan[userId]){
     msg.text.split("\n").forEach(k=>{
       if(k.trim()){
@@ -136,7 +141,6 @@ UTR: ${msg.text}`,
 
     bot.sendMessage(userId,
 `✅ STOCK UPDATED
-
 ${selectedPlan[userId]}: ${keys[selectedPlan[userId]].length}`);
 
     selectedPlan[userId]=null;
@@ -148,13 +152,14 @@ ${selectedPlan[userId]}: ${keys[selectedPlan[userId]].length}`);
   }
 });
 
-// BUTTON
+// BUTTONS
 bot.on("callback_query",(query)=>{
   const dataBtn = query.data;
   const userId = query.from.id;
 
   bot.answerCallbackQuery(query.id);
 
+  // BUY PLAN
   if(dataBtn.startsWith("buy_")){
     if(userPlan[userId]){
       bot.answerCallbackQuery(query.id,{text:"⚠️ Complete previous payment"});
@@ -165,8 +170,7 @@ bot.on("callback_query",(query)=>{
     userPlan[userId] = { ...plans[planId], id: planId };
 
     bot.sendPhoto(userId,QR_LINK,{
-      caption:
-`💰 PAYMENT DETAILS
+      caption:`💰 PAYMENT DETAILS
 
 👤 ${PAYMENT_NAME}
 
@@ -187,15 +191,18 @@ UPI:
     });
   }
 
+  // SCREENSHOT
   if(dataBtn==="screenshot"){
     waitingScreenshot[userId]=true;
     bot.sendMessage(userId,"📸 SEND SCREENSHOT");
   }
 
+  // UTR
   if(dataBtn==="enter_utr"){
     bot.sendMessage(userId,"🧾 ENTER YOUR UTR",{reply_markup:{force_reply:true}});
   }
 
+  // APPROVE
   if(dataBtn.startsWith("approve_")){
     let uid = dataBtn.split("_")[1];
     let plan = userPlan[uid];
@@ -203,8 +210,8 @@ UPI:
 
     const planId = plan.id;
 
-    if (!keys[planId] || keys[planId].length === 0) {
-      bot.sendMessage(ADMIN_ID, `❌ STOCK EMPTY`);
+    if(!keys[planId] || keys[planId].length===0){
+      bot.sendMessage(ADMIN_ID,"❌ STOCK EMPTY");
       return;
     }
 
@@ -215,13 +222,13 @@ UPI:
     expiry.setDate(expiry.getDate()+plan.days);
 
     data.sold.push({
-      user: uid,
-      key: key,
-      plan: plan.name,
-      expiry: expiry.toISOString()
+      user:uid,
+      key:key,
+      plan:plan.name,
+      expiry:expiry.toISOString()
     });
 
-    fs.writeFileSync("data.json", JSON.stringify(data,null,2));
+    fs.writeFileSync("data.json",JSON.stringify(data,null,2));
 
     delete userPlan[uid];
 
@@ -237,14 +244,47 @@ UPI:
 {parse_mode:"Markdown"});
   }
 
+  // REJECT
   if(dataBtn.startsWith("reject_")){
     let uid = dataBtn.split("_")[1];
     delete userPlan[uid];
-    bot.sendMessage(uid,"❌ PAYMENT REJECTED\nTry Again");
+    bot.sendMessage(uid,"❌ PAYMENT REJECTED");
+  }
+
+  // LIVE STOCK
+  if(dataBtn==="livestock"){
+    let msg = "📊 LIVE STOCK\n\n";
+
+    Object.keys(plans).forEach(p=>{
+      msg += `${plans[p].name}\n🟢 ${keys[p].length}\n\n`;
+    });
+
+    bot.sendMessage(userId,msg);
+  }
+
+  // ADD STOCK BUTTON
+  if(dataBtn==="addstock"){
+    bot.sendMessage(userId,"SELECT PLAN",{
+      reply_markup:{
+        inline_keyboard:[
+          [{text:"1 DAY",callback_data:"plan1"}],
+          [{text:"7 DAY",callback_data:"plan2"}],
+          [{text:"15 DAY",callback_data:"plan3"}],
+          [{text:"30 DAY",callback_data:"plan4"}],
+          [{text:"60 DAY",callback_data:"plan5"}]
+        ]
+      }
+    });
+  }
+
+  // PLAN SELECT
+  if(dataBtn.startsWith("plan")){
+    selectedPlan[userId]=dataBtn;
+    bot.sendMessage(userId,"SEND KEYS (ONE PER LINE)");
   }
 });
 
-// ADMIN
+// ADMIN PANEL
 bot.onText(/\/admin/, (msg)=>{
   if(msg.from.id!==ADMIN_ID) return;
 
