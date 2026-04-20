@@ -2,7 +2,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const express = require("express");
 const fs = require("fs");
 
-const token = process.env.BOT_TOKEN || "8304628992:AAE_EOjLKr5iQQg40zzoHX2fp188XZPaF18";
+const token = process.env.BOT_TOKEN || "https://t.me/+wRZN39fdVcRkYTM9";
 const ADMIN_ID = 7707237527;
 
 const QR_LINK = "https://images.weserv.nl/?url=raw.githubusercontent.com/sandipmeena8585-beep/cobra-bot/main/upi_qr.png&w=220&h=220";
@@ -11,11 +11,22 @@ const UPI_ID = "godxcobra@axl";
 const CHANNEL_LINK = "https://t.me/+wRZN39fdVcRkYTM9";
 const PAYMENT_NAME = "SANDIP MEENA";
 
-// 🔥 FIX → POLLING MODE
-const bot = new TelegramBot(token, { polling: true });
+// 🔥 WEBHOOK BOT (ONLY CHANGE)
+const bot = new TelegramBot(token);
 
-// SERVER (same)
 const app = express();
+app.use(express.json());
+
+// 🔗 WEBHOOK SET
+const url = process.env.RENDER_EXTERNAL_URL;
+bot.setWebHook(`${url}/bot${token}`);
+
+app.post(`/bot${token}`, (req, res) => {
+  bot.processUpdate(req.body);
+  res.sendStatus(200);
+});
+
+// SERVER
 app.get("/", (req,res)=>res.send("RUNNING"));
 app.listen(process.env.PORT || 3000);
 
