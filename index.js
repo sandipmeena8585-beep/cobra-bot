@@ -2,7 +2,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const express = require("express");
 const fs = require("fs");
 
-const token = process.env.BOT_TOKEN || "https://t.me/+wRZN39fdVcRkYTM9";
+const token = "https://t.me/+wRZN39fdVcRkYTM9";
 const ADMIN_ID = 7707237527;
 
 const QR_LINK = "https://images.weserv.nl/?url=raw.githubusercontent.com/sandipmeena8585-beep/cobra-bot/main/upi_qr.png&w=220&h=220";
@@ -11,48 +11,24 @@ const UPI_ID = "godxcobra@axl";
 const CHANNEL_LINK = "https://t.me/+wRZN39fdVcRkYTM9";
 const PAYMENT_NAME = "SANDIP MEENA";
 
-// 🔥 WEBHOOK BOT (ONLY CHANGE)
-const bot = new TelegramBot(token);
-
-const app = express();
-app.use(express.json());
-
-// 🔗 WEBHOOK SET
-const url = process.env.RENDER_EXTERNAL_URL;
-bot.setWebHook(`${url}/bot${token}`);
-
-app.post(`/bot${token}`, (req, res) => {
-  bot.processUpdate(req.body);
-  res.sendStatus(200);
-});
+const bot = new TelegramBot(token, { polling: true });
 
 // SERVER
-app.get("/", (req,res)=>res.send("RUNNING"));
+const app = express();
+app.get("/", (req,res)=>res.send("Running"));
 app.listen(process.env.PORT || 3000);
 
-// SAFE LOAD
-function loadJSON(file, def){
-  try{
-    return JSON.parse(fs.readFileSync(file));
-  }catch{
-    fs.writeFileSync(file, JSON.stringify(def,null,2));
-    return def;
-  }
-}
+// FILE LOAD
+let keys = JSON.parse(fs.readFileSync("keys.json"));
+let data = JSON.parse(fs.readFileSync("data.json"));
 
-let keys = loadJSON("keys.json",{
-  plan1:[], plan2:[], plan3:[], plan4:[], plan5:[]
-});
-
-let data = loadJSON("data.json",{ sold:[] });
-
-// PLANS (same)
+// PLANS
 const plans = {
-  plan1: { name: "🗝️ 1 HOUR - 30₹", days: 0.04 },
-  plan2: { name: "🗝️ 3 HOUR - 50₹", days: 0.12 },
-  plan3: { name: "🗝️ 5 HOUR - 80₹", days: 0.2 },
-  plan4: { name: "🗝️ 1 DAY - 120₹", days: 1 },
-  plan5: { name: "🗝️ 7 DAY - 400₹", days: 7 }
+  plan1: { name: "🗝️ 1 DAY - 100₹", days: 1 },
+  plan2: { name: "🗝️ 7 DAY - 400₹", days: 7 },
+  plan3: { name: "🗝️ 15 DAY - 700₹", days: 15 },
+  plan4: { name: "🗝️ 30 DAY - 900₹", days: 30 },
+  plan5: { name: "🗝️ 60 DAY - 1200₹", days: 60 }
 };
 
 let userPlan = {};
@@ -60,9 +36,9 @@ let selectedPlan = {};
 let waitingScreenshot = {};
 
 // MENU
-function showMenu(chatId){
+function showMenu(chatId) {
   bot.sendMessage(chatId,
-`🔥 COBRA SERVER MOD 🔥
+`🔥 COBRA VIP PANEL 🔥
 
 💎 PREMIUM KEY STORE
 
@@ -73,8 +49,8 @@ function showMenu(chatId){
 
 👇 SELECT YOUR PLAN`,
 {
-  reply_markup:{
-    inline_keyboard:[
+  reply_markup: {
+    inline_keyboard: [
       [{ text: plans.plan1.name, callback_data: "buy_plan1" }],
       [{ text: plans.plan2.name, callback_data: "buy_plan2" }],
       [{ text: plans.plan3.name, callback_data: "buy_plan3" }],
@@ -86,22 +62,23 @@ function showMenu(chatId){
 }
 
 // START
-bot.onText(/\/start/, (msg)=> showMenu(msg.chat.id));
+bot.onText(/\/start/, (msg)=>{
+  showMenu(msg.chat.id);
+});
 
 // MESSAGE
 bot.on("message",(msg)=>{
   const userId = msg.from.id;
 
   if(waitingScreenshot[userId] && msg.photo){
-
     if(!userPlan[userId]){
-      bot.sendMessage(userId,"⚠️ Select plan again");
+      bot.sendMessage(userId,"⚠️ No active plan\nSelect again");
       return;
     }
 
     let plan = userPlan[userId];
 
-    bot.sendPhoto(ADMIN_ID, msg.photo[msg.photo.length-1].file_id,{
+    bot.sendPhoto(ADMIN_ID, msg.photo[msg.photo.length-1].file_id, {
       caption:
 `📸 PAYMENT PROOF
 
@@ -121,9 +98,8 @@ PLAN: ${plan.name}`,
   }
 
   if(msg.reply_to_message && msg.reply_to_message.text.includes("ENTER YOUR UTR")){
-
     if(!userPlan[userId]){
-      bot.sendMessage(userId,"⚠️ Select plan again");
+      bot.sendMessage(userId,"⚠️ No active plan\nSelect again");
       return;
     }
 
@@ -160,6 +136,7 @@ UTR: ${msg.text}`,
 
     bot.sendMessage(userId,
 `✅ STOCK UPDATED
+
 ${selectedPlan[userId]}: ${keys[selectedPlan[userId]].length}`);
 
     selectedPlan[userId]=null;
@@ -178,17 +155,13 @@ bot.on("callback_query",(query)=>{
 
   bot.answerCallbackQuery(query.id);
 
-  console.log("CLICK:", dataBtn);
-
   if(dataBtn.startsWith("buy_")){
-
     if(userPlan[userId]){
       bot.answerCallbackQuery(query.id,{text:"⚠️ Complete previous payment"});
       return;
     }
 
     let planId = dataBtn.split("_")[1];
-
     userPlan[userId] = { ...plans[planId], id: planId };
 
     bot.sendPhoto(userId,QR_LINK,{
@@ -226,13 +199,12 @@ UPI:
   if(dataBtn.startsWith("approve_")){
     let uid = dataBtn.split("_")[1];
     let plan = userPlan[uid];
-
     if(!plan) return;
 
     const planId = plan.id;
 
-    if(!keys[planId] || keys[planId].length===0){
-      bot.sendMessage(ADMIN_ID,"❌ STOCK EMPTY");
+    if (!keys[planId] || keys[planId].length === 0) {
+      bot.sendMessage(ADMIN_ID, `❌ STOCK EMPTY`);
       return;
     }
 
@@ -243,13 +215,13 @@ UPI:
     expiry.setDate(expiry.getDate()+plan.days);
 
     data.sold.push({
-      user:uid,
-      key:key,
-      plan:plan.name,
-      expiry:expiry.toISOString()
+      user: uid,
+      key: key,
+      plan: plan.name,
+      expiry: expiry.toISOString()
     });
 
-    fs.writeFileSync("data.json",JSON.stringify(data,null,2));
+    fs.writeFileSync("data.json", JSON.stringify(data,null,2));
 
     delete userPlan[uid];
 
@@ -268,6 +240,20 @@ UPI:
   if(dataBtn.startsWith("reject_")){
     let uid = dataBtn.split("_")[1];
     delete userPlan[uid];
-    bot.sendMessage(uid,"❌ PAYMENT REJECTED");
+    bot.sendMessage(uid,"❌ PAYMENT REJECTED\nTry Again");
   }
+});
+
+// ADMIN
+bot.onText(/\/admin/, (msg)=>{
+  if(msg.from.id!==ADMIN_ID) return;
+
+  bot.sendMessage(msg.chat.id,"⚙️ ADMIN PANEL",{
+    reply_markup:{
+      inline_keyboard:[
+        [{text:"➕ ADD STOCK",callback_data:"addstock"}],
+        [{text:"📊 LIVE STOCK",callback_data:"livestock"}]
+      ]
+    }
+  });
 });
