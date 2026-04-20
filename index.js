@@ -11,10 +11,22 @@ const UPI_ID = "godxcobra@axl";
 const CHANNEL_LINK = "https://t.me/+wRZN39fdVcRkYTM9";
 const PAYMENT_NAME = "SANDIP MEENA";
 
-const bot = new TelegramBot(token, { polling: true });
+// 🔥 WEBHOOK BOT (ONLY CHANGE)
+const bot = new TelegramBot(token);
+
+const app = express();
+app.use(express.json());
+
+// 🔗 WEBHOOK SET
+const url = process.env.RENDER_EXTERNAL_URL;
+bot.setWebHook(`${url}/bot${token}`);
+
+app.post(`/bot${token}`, (req, res) => {
+  bot.processUpdate(req.body);
+  res.sendStatus(200);
+});
 
 // SERVER
-const app = express();
 app.get("/", (req,res)=>res.send("RUNNING"));
 app.listen(process.env.PORT || 3000);
 
@@ -34,7 +46,7 @@ let keys = loadJSON("keys.json",{
 
 let data = loadJSON("data.json",{ sold:[] });
 
-// PLANS
+// PLANS (same)
 const plans = {
   plan1: { name: "🗝️ 1 HOUR - 30₹", days: 0.04 },
   plan2: { name: "🗝️ 3 HOUR - 50₹", days: 0.12 },
@@ -164,7 +176,6 @@ bot.on("callback_query",(query)=>{
   const dataBtn = query.data;
   const userId = query.from.id;
 
-  // 🔥 ONLY CHANGE (IMPORTANT FIX)
   bot.answerCallbackQuery(query.id);
 
   console.log("CLICK:", dataBtn);
