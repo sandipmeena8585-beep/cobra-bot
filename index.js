@@ -2,7 +2,6 @@ const TelegramBot = require('node-telegram-bot-api');
 const express = require("express");
 const fs = require("fs");
 
-// 🔐 SECURITY (ENV से भी डाल सकता है)
 const token = process.env.BOT_TOKEN || "8304628992:AAFANNXH6syLC1FIuHxKeYd8MIyaWXNTXg4";
 const ADMIN_ID = 7707237527;
 
@@ -14,12 +13,12 @@ const PAYMENT_NAME = "SANDIP MEENA";
 
 const bot = new TelegramBot(token, { polling: true });
 
-// 🌐 SERVER
+// SERVER
 const app = express();
 app.get("/", (req,res)=>res.send("RUNNING"));
 app.listen(process.env.PORT || 3000);
 
-// 📦 SAFE LOAD FILES
+// SAFE LOAD
 function loadJSON(file, def){
   try{
     return JSON.parse(fs.readFileSync(file));
@@ -35,7 +34,7 @@ let keys = loadJSON("keys.json",{
 
 let data = loadJSON("data.json",{ sold:[] });
 
-// 💎 NEW PLANS (UPDATED)
+// PLANS
 const plans = {
   plan1: { name: "🗝️ 1 HOUR - 30₹", days: 0.04 },
   plan2: { name: "🗝️ 3 HOUR - 50₹", days: 0.12 },
@@ -48,7 +47,7 @@ let userPlan = {};
 let selectedPlan = {};
 let waitingScreenshot = {};
 
-// 🔥 MENU
+// MENU
 function showMenu(chatId){
   bot.sendMessage(chatId,
 `🔥 COBRA SERVER MOD 🔥
@@ -165,6 +164,9 @@ bot.on("callback_query",(query)=>{
   const dataBtn = query.data;
   const userId = query.from.id;
 
+  // 🔥 FIX 1
+  bot.answerCallbackQuery(query.id);
+
   console.log("CLICK:", dataBtn);
 
   if(dataBtn.startsWith("buy_")){
@@ -226,8 +228,13 @@ UPI:
     let key = keys[planId].shift();
     fs.writeFileSync("keys.json",JSON.stringify(keys,null,2));
 
+    // 🔥 FIX 2 (HOUR + DAY SUPPORT)
     let expiry = new Date();
-    expiry.setDate(expiry.getDate()+plan.days);
+    if(plan.days < 1){
+      expiry.setTime(expiry.getTime() + (plan.days * 24 * 60 * 60 * 1000));
+    } else {
+      expiry.setDate(expiry.getDate()+plan.days);
+    }
 
     data.sold.push({
       user:uid,
@@ -246,7 +253,7 @@ UPI:
 🔑 KEY:
 \`${key}\`
 
-📅 ${expiry.toDateString()}
+📅 ${expiry.toString()}
 
 🔗 ${CHANNEL_LINK}`,
 {parse_mode:"Markdown"});
@@ -257,17 +264,4 @@ UPI:
     delete userPlan[uid];
     bot.sendMessage(uid,"❌ PAYMENT REJECTED");
   }
-});
-
-// ADMIN
-bot.onText(/\/admin/, (msg)=>{
-  if(msg.from.id!==ADMIN_ID) return;
-
-  bot.sendMessage(msg.chat.id,"⚙️ ADMIN PANEL",{
-    reply_markup:{
-      inline_keyboard:[
-        [{text:"➕ ADD STOCK",callback_data:"addstock"}]
-      ]
-    }
-  });
 });
