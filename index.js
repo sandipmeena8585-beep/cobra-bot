@@ -161,6 +161,12 @@ bot.on("callback_query",(query)=>{
 
   // BUY PLAN
   if(dataBtn.startsWith("buy_")){
+
+    // 🔥 ONLY CHANGE (FIX)
+    if(userPlan[userId] && !waitingScreenshot[userId]){
+      delete userPlan[userId];
+    }
+
     if(userPlan[userId]){
       bot.answerCallbackQuery(query.id,{text:"⚠️ Complete previous payment"});
       return;
