@@ -2,9 +2,12 @@ const TelegramBot = require('node-telegram-bot-api');
 const express = require("express");
 const mongoose = require("mongoose");
 
-// ===== CONFIG (CORRECT) =====
-const token = "8304628992:AAF2gzdL33mdIkBuoVMUQUbzTOQZEeUvoqI";
-const MONGO_URL = "mongodb+srv://sandipmeena8585_db_user:SAMI9166@cluster0.uqwcyny.mongodb.net/cobra?retryWrites=true&w=majority";
+// ===== CONFIG =====
+const token = process.env.BOT_TOKEN || "8304628992:AAF2gzdL33mdIkBuoVMUQUbzTOQZEeUvoqI";
+
+// ⚠️ IMPORTANT: @ => %40
+const MONGO_URL = process.env.MONGO_URL || "mongodb+srv://COBRA:Cobra%4012345@cluster0.uqwcyny.mongodb.net/cobra?retryWrites=true&w=majority";
+
 const ADMIN_ID = 7707237527;
 
 const CHANNEL_LINK = "https://t.me/+wRZN39fdVcRkYTM9";
@@ -19,6 +22,7 @@ app.listen(process.env.PORT || 3000, ()=>console.log("Server Running"));
 
 // ===== MODELS =====
 const Key = mongoose.model("Key", { plan:String, key:String });
+
 const Sale = mongoose.model("Sale", {
   user:String,
   key:String,
