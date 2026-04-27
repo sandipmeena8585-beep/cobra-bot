@@ -2,11 +2,22 @@ const TelegramBot = require('node-telegram-bot-api');
 const express = require("express");
 const mongoose = require("mongoose");
 
-// ===== CONFIG =====
-const token = 8304628992:AAF2gzdL33mdIkBuoVMUQUbzTOQZEeUvoqI;
-const MONGO_URL = mongodb+srv://sandipmeena8585_db_user:Tck2CfHfuw2Odb2k@cluster0.uqwcyyn.mongodb.net/?appName=Cluster0;
+// ===== ENV (Render me set karna) =====
+const token = mongodb+srv://sandipmeena8585_db_user:Tck2CfHfuw2Odb2k@cluster0.uqwcyyn.mongodb.net/?appName=Cluster0;
+const MONGO_URL = 8304628992:AAF2gzdL33mdIkBuoVMUQUbzTOQZEeUvoqI;
 const ADMIN_ID = 7707237527;
 
+// ===== CHECK =====
+if (!token) {
+  console.log("❌ BOT_TOKEN missing");
+  process.exit(1);
+}
+if (!MONGO_URL) {
+  console.log("❌ MONGO_URL missing");
+  process.exit(1);
+}
+
+// ===== CONFIG =====
 const CHANNEL_LINK = "https://t.me/+wRZN39fdVcRkYTM9";
 const QR_LINK = "https://images.weserv.nl/?url=raw.githubusercontent.com/sandipmeena8585-beep/cobra-bot/main/upi_qr.png&w=220&h=220";
 const UPI_ID = "godxcobra@axl";
@@ -40,17 +51,17 @@ const plans = {
 let userPlan={}, waitingScreenshot={}, selectedPlan={}, userUTR={};
 
 // ===== STOCK =====
-async function getStockText(){
+async function getStock(){
   return `📦 LIVE STOCK
 
-🗝️ 1 DAY  : ${await Key.countDocuments({plan:"plan1"})}
-🗝️ 7 DAY  : ${await Key.countDocuments({plan:"plan2"})}
-🗝️ 15 DAY : ${await Key.countDocuments({plan:"plan3"})}
-🗝️ 30 DAY : ${await Key.countDocuments({plan:"plan4"})}
-🗝️ 60 DAY : ${await Key.countDocuments({plan:"plan5"})}`;
+1 DAY  : ${await Key.countDocuments({plan:"plan1"})}
+7 DAY  : ${await Key.countDocuments({plan:"plan2"})}
+15 DAY : ${await Key.countDocuments({plan:"plan3"})}
+30 DAY : ${await Key.countDocuments({plan:"plan4"})}
+60 DAY : ${await Key.countDocuments({plan:"plan5"})}`;
 }
 
-// ===== CONNECT DB FIRST =====
+// ===== DB CONNECT =====
 mongoose.connect(MONGO_URL,{
   useNewUrlParser:true,
   useUnifiedTopology:true
@@ -58,15 +69,11 @@ mongoose.connect(MONGO_URL,{
 .then(()=>{
   console.log("MongoDB Connected ✅");
 
-  const bot = new TelegramBot(token, { polling: true });
+  const bot = new TelegramBot(token,{ polling:true });
 
   // ===== HOME =====
-  function showHome(id){
-    bot.sendMessage(id,
-`🏠 COBRA PANEL
-
-💎 PREMIUM ACCESS`,
-{
+  function home(id){
+    bot.sendMessage(id,"🏠 COBRA PANEL",{
       reply_markup:{
         inline_keyboard:[
           [{text:"🛒 BUY",callback_data:"buy"}],
@@ -77,24 +84,21 @@ mongoose.connect(MONGO_URL,{
     });
   }
 
-  bot.onText(/\/start/,msg=>showHome(msg.chat.id));
+  bot.onText(/\/start/,msg=>home(msg.chat.id));
 
   // ===== MESSAGE =====
   bot.on("message",async msg=>{
     let id = msg.from.id;
 
     // UTR
-    if(msg.reply_to_message && msg.reply_to_message.text?.includes("ENTER UTR")){
+    if(msg.reply_to_message?.text?.includes("ENTER UTR")){
       if(!userPlan[id]) return;
-
       userUTR[id]=msg.text;
 
       bot.sendMessage(ADMIN_ID,
-`📥 PAYMENT
-
-USER: ${id}
-PLAN: ${userPlan[id].name}
-UTR: ${msg.text}`,{
+`USER:${id}
+PLAN:${userPlan[id].name}
+UTR:${msg.text}`,{
         reply_markup:{
           inline_keyboard:[[
             {text:"✅ VERIFY",callback_data:`approve_${id}`},
@@ -103,7 +107,7 @@ UTR: ${msg.text}`,{
         }
       });
 
-      return bot.sendMessage(id,"⏳ WAIT ADMIN");
+      return bot.sendMessage(id,"WAIT ADMIN");
     }
 
     // SCREENSHOT
@@ -111,7 +115,7 @@ UTR: ${msg.text}`,{
       if(!userPlan[id]) return;
 
       bot.sendPhoto(ADMIN_ID,msg.photo.pop().file_id,{
-        caption:`📸 USER:${id}\nPLAN:${userPlan[id].name}`,
+        caption:`USER:${id}\nPLAN:${userPlan[id].name}`,
         reply_markup:{
           inline_keyboard:[[
             {text:"✅ VERIFY",callback_data:`approve_${id}`},
@@ -121,7 +125,7 @@ UTR: ${msg.text}`,{
       });
 
       waitingScreenshot[id]=false;
-      return bot.sendMessage(id,"⏳ WAIT ADMIN");
+      return bot.sendMessage(id,"WAIT ADMIN");
     }
 
     // ADD STOCK
@@ -131,17 +135,16 @@ UTR: ${msg.text}`,{
           await Key.create({plan:selectedPlan[id],key:k.trim()});
         }
       }
-
       selectedPlan[id]=null;
-      return bot.sendMessage(id,"✅ STOCK ADDED\n\n"+await getStockText());
+      return bot.sendMessage(id,"STOCK ADDED\n\n"+await getStock());
     }
 
     if(msg.text && !msg.text.startsWith("/")){
-      showHome(id);
+      home(id);
     }
   });
 
-  // ===== BUTTON =====
+  // ===== BUTTONS =====
   bot.on("callback_query",async q=>{
     let d=q.data,id=q.from.id;
     bot.answerCallbackQuery(q.id);
@@ -157,7 +160,7 @@ UTR: ${msg.text}`,{
     }
 
     if(d==="info"){
-      return bot.sendMessage(id,await getStockText());
+      return bot.sendMessage(id,await getStock());
     }
 
     if(d==="help"){
@@ -169,16 +172,15 @@ UTR: ${msg.text}`,{
       userPlan[id]={...plans[p],id:p};
 
       return bot.sendPhoto(id,QR_LINK,{
-        caption:`👤 ${PAYMENT_NAME}
+        caption:`NAME: ${PAYMENT_NAME}
 
-💳 UPI: \`${UPI_ID}\`
+UPI: ${UPI_ID}
 
 ${plans[p].name}`,
-        parse_mode:"Markdown",
         reply_markup:{
           inline_keyboard:[
             [{text:"📸 SCREENSHOT",callback_data:"ss"}],
-            [{text:"💳 ENTER UTR",callback_data:"utr"}]
+            [{text:"💳 UTR",callback_data:"utr"}]
           ]
         }
       });
@@ -204,20 +206,17 @@ ${plans[p].name}`,
       if(!userPlan[uid]) return;
 
       let keyData=await Key.findOneAndDelete({plan:userPlan[uid].id});
-      if(!keyData) return bot.sendMessage(ADMIN_ID,"❌ STOCK EMPTY");
-
-      let expiry=new Date();
-      expiry.setDate(expiry.getDate()+userPlan[uid].days);
+      if(!keyData) return bot.sendMessage(ADMIN_ID,"STOCK EMPTY");
 
       await Sale.create({
         user:uid,
         key:keyData.key,
         plan:userPlan[uid].name,
-        expiry:expiry.toISOString(),
+        expiry:new Date().toISOString(),
         utr:userUTR[uid]||"N/A"
       });
 
-      bot.sendMessage(uid,`✅ KEY:\n\`${keyData.key}\``,{parse_mode:"Markdown"});
+      bot.sendMessage(uid,`KEY:\n${keyData.key}`);
 
       delete userPlan[uid];
       delete userUTR[uid];
@@ -232,7 +231,7 @@ ${plans[p].name}`,
 
       let uid=d.split("_")[1];
       delete userPlan[uid];
-      bot.sendMessage(uid,"❌ REJECTED");
+      bot.sendMessage(uid,"REJECTED");
     }
 
     if(d==="addstock"){
@@ -251,7 +250,7 @@ ${plans[p].name}`,
 
     if(d.startsWith("plan")){
       selectedPlan[id]=d;
-      return bot.sendMessage(id,"SEND KEYS (ONE PER LINE)");
+      return bot.sendMessage(id,"SEND KEYS");
     }
   });
 
@@ -259,14 +258,16 @@ ${plans[p].name}`,
   bot.onText(/\/admin/,msg=>{
     if(msg.from.id!==ADMIN_ID) return;
 
-    bot.sendMessage(msg.chat.id,"⚙️ ADMIN PANEL",{
+    bot.sendMessage(msg.chat.id,"ADMIN PANEL",{
       reply_markup:{
         inline_keyboard:[
-          [{text:"➕ ADD STOCK",callback_data:"addstock"}]
+          [{text:"ADD STOCK",callback_data:"addstock"}]
         ]
       }
     });
   });
 
 })
-.catch(err=>console.log("❌ Mongo Error:",err));
+.catch(err=>{
+  console.log("❌ Mongo Error:",err);
+});
