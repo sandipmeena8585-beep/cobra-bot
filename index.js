@@ -3,7 +3,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 
 // ===== CONFIG =====
-const token = process.env.BOT_TOKEN || "8304628992:AAFHjdhzF33fiH2QHjQScU9lK2zgqAx7nIc";
+const token = process.env.BOT_TOKEN || "PUT_YOUR_TOKEN";
 const MONGO_URL = process.env.MONGO_URL || "mongodb+srv://COBRA:Cobra%4012345@cluster0.uqwcyny.mongodb.net/cobra?retryWrites=true&w=majority";
 const ADMIN_ID = 7707237527;
 
@@ -77,6 +77,17 @@ function home(id){
   });
 }
 
+// ===== STOCK =====
+async function getStock(){
+  return `📦 LIVE STOCK
+
+1 DAY  : ${await Key.countDocuments({plan:"plan1"})}
+7 DAY  : ${await Key.countDocuments({plan:"plan2"})}
+15 DAY : ${await Key.countDocuments({plan:"plan3"})}
+30 DAY : ${await Key.countDocuments({plan:"plan4"})}
+60 DAY : ${await Key.countDocuments({plan:"plan5"})}`;
+}
+
 // ===== REPORT =====
 async function getReport(){
   const today = new Date(); today.setHours(0,0,0,0);
@@ -107,7 +118,11 @@ bot.on("message", async msg=>{
 
   // UTR
   if(msg.reply_to_message?.text?.includes("ENTER UTR")){
+    if(!userPlan[id]) return;
+
     userUTR[id]=msg.text;
+
+    await Log.create({text:`UTR ${id}`});
 
     bot.sendMessage(ADMIN_ID,
 `USER: ${id}
@@ -126,6 +141,10 @@ UTR: ${msg.text}`,{
 
   // SCREENSHOT
   if(waitingScreenshot[id] && msg.photo){
+    if(!userPlan[id]) return;
+
+    await Log.create({text:`SCREENSHOT ${id}`});
+
     bot.sendPhoto(ADMIN_ID,msg.photo.pop().file_id,{
       caption:`USER: ${id}\nPLAN: ${userPlan[id].name}`,
       reply_markup:{
@@ -148,8 +167,10 @@ UTR: ${msg.text}`,{
       }
     }
     selectedPlan[id]=null;
-    await Log.create({text:"STOCK ADDED"});
-    return bot.sendMessage(id,"✅ STOCK ADDED");
+
+    await Log.create({text:`STOCK ADDED ${id}`});
+
+    return bot.sendMessage(id,"✅ STOCK ADDED\n\n"+await getStock());
   }
 });
 
@@ -168,32 +189,31 @@ bot.on("callback_query", async q=>{
     });
   }
 
-  // ✅ UPDATED INFO (NO STOCK)
+  // ❌ STOCK HIDE FROM USER
   if(d==="info"){
     return bot.sendMessage(id,
 `📊 *COBRA INFO*
 
 🔥 Trusted Seller  
 ⚡ Instant Delivery  
-🛡️ 100% Safe & Secure  
-🎯 Legit Keys  
+🛡️ Safe & Secure  
+🎯 Legit Keys Only  
 
-💎 Best Quality Service Guaranteed`,
+💎 Premium Quality Service`,
 {parse_mode:"Markdown"});
   }
 
-  // ✅ UPDATED HELP
   if(d==="help"){
     return bot.sendMessage(id,
 `⚙️ *HELP & SUPPORT*
 
-💬 Payment related issue  
+💬 Payment issue  
 💬 Key not received  
-💬 Any technical problem  
+💬 Any problem  
 
-हमारी team हमेशा active है ✅  
+Team always active ✅  
 
-📩 DM NOW 👉 @GODx_COBRA`,
+📩 DM 👉 @GODx_COBRA`,
 {parse_mode:"Markdown"});
   }
 
@@ -202,13 +222,12 @@ bot.on("callback_query", async q=>{
     userPlan[id]={...plans[p],id:p};
 
     return bot.sendPhoto(id,QR_LINK,{
-      caption:`💰 *PAYMENT*
+      caption:`💰 PAYMENT
 
 👤 ${PAYMENT_NAME}
 📦 ${plans[p].name}
 
 💳 UPI: ${UPI_ID}`,
-      parse_mode:"Markdown",
       reply_markup:{
         inline_keyboard:[
           [{text:"📸 SCREENSHOT",callback_data:"ss"}],
@@ -220,7 +239,7 @@ bot.on("callback_query", async q=>{
 
   if(d==="ss"){
     waitingScreenshot[id]=true;
-    return bot.sendMessage(id,"📸 SEND SCREENSHOT");
+    return bot.sendMessage(id,"SEND SCREENSHOT");
   }
 
   if(d==="utr"){
@@ -235,6 +254,10 @@ bot.on("callback_query", async q=>{
 
     let uid=d.split("_")[1];
 
+    // ONE USER ONE KEY
+    let active=await Sale.findOne({user:uid,expiry:{$gt:new Date()}});
+    if(active) return bot.sendMessage(uid,"❌ ACTIVE PLAN EXISTS");
+
     let keyData=await Key.findOneAndDelete({plan:userPlan[uid].id});
     if(!keyData) return bot.sendMessage(ADMIN_ID,"❌ STOCK EMPTY");
 
@@ -248,6 +271,8 @@ bot.on("callback_query", async q=>{
       expiry:exp,
       utr:userUTR[uid]||"N/A"
     });
+
+    await Log.create({text:`APPROVED ${uid}`});
 
     bot.sendMessage(uid,
 `✅ VERIFIED
@@ -268,6 +293,12 @@ ${exp.toLocaleString()}`,
       }
     });
 
+    // LOW STOCK ALERT
+    let left=await Key.countDocuments({plan:userPlan[uid].id});
+    if(left<=2){
+      bot.sendMessage(ADMIN_ID,`⚠️ LOW STOCK ${userPlan[uid].name}`);
+    }
+
     delete userPlan[uid];
     delete userUTR[uid];
   }
@@ -279,6 +310,9 @@ ${exp.toLocaleString()}`,
     });
 
     let uid=d.split("_")[1];
+
+    await Log.create({text:`REJECT ${uid}`});
+
     bot.sendMessage(uid,"❌ PAYMENT REJECTED");
     delete userPlan[uid];
   }
