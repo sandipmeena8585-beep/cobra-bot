@@ -3,8 +3,8 @@ const express = require("express");
 const mongoose = require("mongoose");
 
 // ===== CONFIG =====
-const token = "8304628992:AAFHjdhzF33fiH2QHjQScU9lK2zgqAx7nIc";
-const MONGO_URL = "mongodb+srv://COBRA:Cobra%4012345@cluster0.uqwcyny.mongodb.net/cobra?retryWrites=true&w=majority";
+const token = process.env.BOT_TOKEN || "8304628992:AAFHjdhzF33fiH2QHjQScU9lK2zgqAx7nIc";
+const MONGO_URL = process.env.MONGO_URL || "mongodb+srv://COBRA:Cobra%4012345@cluster0.uqwcyny.mongodb.net/cobra?retryWrites=true&w=majority";
 const ADMIN_ID = 7707237527;
 
 const CHANNEL_LINK = "https://t.me/+wRZN39fdVcRkYTM9";
@@ -16,30 +16,24 @@ const PAYMENT_NAME = "SANDIP MEENA";
 const app = express();
 app.use(express.json());
 
-app.get("/", (req,res)=>res.send("RUNNING"));
+app.get("/", (req,res)=>res.send("COBRA BOT RUNNING ✅"));
+app.listen(process.env.PORT || 3000);
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, ()=>console.log("Server Running on " + PORT));
-
-// ===== BOT =====
+// ===== BOT (WEBHOOK) =====
 const bot = new TelegramBot(token);
 const URL = process.env.RENDER_EXTERNAL_URL;
 
-// 🔥 IMPORTANT FIX (409 ERROR REMOVE)
-(async () => {
-  try {
-    await bot.deleteWebHook(); // old remove
-    await bot.setWebHook(`${URL}/bot${token}`);
-    console.log("Webhook set ✅");
-  } catch (e) {
-    console.log("Webhook error ❌", e.message);
-  }
-})();
+bot.setWebHook(`${URL}/bot${token}`);
 
 app.post(`/bot${token}`, (req,res)=>{
   bot.processUpdate(req.body);
   res.sendStatus(200);
 });
+
+// ===== DB =====
+mongoose.connect(MONGO_URL)
+.then(()=>console.log("MongoDB Connected ✅"))
+.catch(err=>console.log("Mongo Error ❌",err));
 
 // ===== MODELS =====
 const Key = mongoose.model("Key",{plan:String,key:String});
@@ -67,10 +61,18 @@ const plans = {
 
 let userPlan={}, waitingScreenshot={}, selectedPlan={}, userUTR={};
 
-// ===== DB =====
-mongoose.connect(MONGO_URL)
-.then(()=>console.log("MongoDB Connected ✅"))
-.catch(err=>console.log("Mongo Error ❌",err));
+// ===== HOME =====
+function home(id){
+  bot.sendMessage(id,"🏠 COBRA PANEL",{
+    reply_markup:{
+      inline_keyboard:[
+        [{text:"🛒 BUY",callback_data:"buy"}],
+        [{text:"📊 INFO",callback_data:"info"}],
+        [{text:"⚙️ HELP",callback_data:"help"}]
+      ]
+    }
+  });
+}
 
 // ===== STOCK =====
 async function getStock(){
@@ -96,25 +98,17 @@ TOTAL: ${await Sale.countDocuments()}`;
 }
 
 // ===== START =====
-bot.onText(/\/start/,async msg=>{
-  let id=msg.from.id;
+bot.onText(/\/start/, async msg=>{
+  let id = msg.from.id;
   await User.updateOne({id},{id},{upsert:true});
-
-  bot.sendMessage(id,"🏠 COBRA PANEL",{
-    reply_markup:{
-      inline_keyboard:[
-        [{text:"🛒 BUY",callback_data:"buy"}],
-        [{text:"📊 INFO",callback_data:"info"}],
-        [{text:"⚙️ HELP",callback_data:"help"}]
-      ]
-    }
-  });
+  home(id);
 });
 
 // ===== MESSAGE =====
-bot.on("message",async msg=>{
+bot.on("message", async msg=>{
   let id = msg.from.id;
 
+  // UTR
   if(msg.reply_to_message?.text?.includes("ENTER UTR")){
     userUTR[id]=msg.text;
 
@@ -133,6 +127,7 @@ UTR:${msg.text}`,{
     return bot.sendMessage(id,"⏳ WAIT ADMIN");
   }
 
+  // SCREENSHOT
   if(waitingScreenshot[id] && msg.photo){
     bot.sendPhoto(ADMIN_ID,msg.photo.pop().file_id,{
       caption:`USER:${id}\nPLAN:${userPlan[id].name}`,
@@ -148,6 +143,7 @@ UTR:${msg.text}`,{
     return bot.sendMessage(id,"⏳ WAIT ADMIN");
   }
 
+  // ADD STOCK
   if(selectedPlan[id]){
     for(let k of msg.text.split("\n")){
       if(k.trim()){
@@ -158,10 +154,15 @@ UTR:${msg.text}`,{
     await Log.create({text:"STOCK ADDED"});
     return bot.sendMessage(id,"✅ STOCK ADDED\n\n"+await getStock());
   }
+
+  // 🔥 FIX RANDOM MSG
+  if(msg.text && !msg.text.startsWith("/")){
+    return home(id);
+  }
 });
 
 // ===== BUTTON =====
-bot.on("callback_query",async q=>{
+bot.on("callback_query", async q=>{
   let d=q.data,id=q.from.id;
   bot.answerCallbackQuery(q.id);
 
@@ -176,7 +177,16 @@ bot.on("callback_query",async q=>{
   }
 
   if(d==="info"){
-    return bot.sendMessage(id,await getStock());
+    return bot.sendMessage(id,
+`📊 COBRA INFO
+
+🔥 TRUSTED SELLER
+💯 FAST DELIVERY
+⚡ INSTANT SUPPORT
+🛡️ SAFE & LEGIT
+
+${await getStock()}`
+    );
   }
 
   if(d==="help"){
@@ -212,6 +222,7 @@ bot.on("callback_query",async q=>{
     return bot.sendMessage(id,"ENTER UTR",{reply_markup:{force_reply:true}});
   }
 
+  // ===== APPROVE =====
   if(d.startsWith("approve_")){
     await bot.editMessageReplyMarkup({inline_keyboard:[]},{
       chat_id:q.message.chat.id,message_id:q.message.message_id
@@ -241,8 +252,16 @@ bot.on("callback_query",async q=>{
     bot.sendMessage(uid,
 `✅ VERIFIED
 
-🔑 ${keyData.key}
-📅 ${exp.toLocaleString()}`,{
+🔑 KEY:
+${keyData.key}
+
+🎮 LIMIT:
+10-12 KILL SAFE PLAY
+
+💳 UPI: ${UPI_ID}
+
+📅 EXPIRY:
+${exp.toLocaleString()}`,{
       reply_markup:{
         inline_keyboard:[
           [{text:"📦 JOIN CHANNEL",url:CHANNEL_LINK}]
@@ -259,6 +278,7 @@ bot.on("callback_query",async q=>{
     delete userUTR[uid];
   }
 
+  // ===== REJECT =====
   if(d.startsWith("reject_")){
     await bot.editMessageReplyMarkup({inline_keyboard:[]},{
       chat_id:q.message.chat.id,message_id:q.message.message_id
