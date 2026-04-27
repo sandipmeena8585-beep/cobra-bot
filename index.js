@@ -12,18 +12,27 @@ const QR_LINK = "https://images.weserv.nl/?url=raw.githubusercontent.com/sandipm
 const UPI_ID = "godxcobra@axl";
 const PAYMENT_NAME = "SANDIP MEENA";
 
-// ===== BOT =====
-const bot = new TelegramBot(token, { polling: true });
+// ===== BOT (FIXED) =====
+const bot = new TelegramBot(token, {
+  polling: {
+    interval: 300,
+    autoStart: true,
+    params: { timeout: 10 }
+  }
+});
 
 // ===== SERVER =====
 const app = express();
 app.get("/", (req,res)=>res.send("RUNNING"));
 app.listen(process.env.PORT || 3000);
 
-// ===== DB =====
-mongoose.connect(MONGO_URL)
+// ===== DB (FIXED) =====
+mongoose.connect(MONGO_URL, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
 .then(()=>console.log("MongoDB Connected ✅"))
-.catch(err=>console.log(err));
+.catch(err=>console.log("Mongo Error ❌", err));
 
 // ===== MODELS =====
 const Key = mongoose.model("Key", { plan:String, key:String });
@@ -46,7 +55,7 @@ const plans = {
 
 let userPlan={}, waitingScreenshot={}, selectedPlan={}, userUTR={};
 
-// ===== STOCK FUNCTION =====
+// ===== STOCK =====
 async function getStockText(){
   const p1 = await Key.countDocuments({plan:"plan1"});
   const p2 = await Key.countDocuments({plan:"plan2"});
@@ -88,6 +97,7 @@ bot.onText(/\/start/,msg=>showHome(msg.chat.id));
 bot.on("message",async msg=>{
   let id = msg.from.id;
 
+  // UTR
   if(msg.reply_to_message && msg.reply_to_message.text.includes("ENTER UTR")){
     userUTR[id] = msg.text;
     let plan=userPlan[id];
@@ -109,6 +119,7 @@ UTR: ${msg.text}`,{
     return bot.sendMessage(id,"⏳ WAIT ADMIN");
   }
 
+  // SCREENSHOT
   if(waitingScreenshot[id] && msg.photo){
     let plan=userPlan[id];
 
@@ -126,7 +137,8 @@ UTR: ${msg.text}`,{
     return bot.sendMessage(id,"⏳ WAIT ADMIN");
   }
 
-  if(selectedPlan[id]){
+  // ADD STOCK (FIX SAFE)
+  if(selectedPlan[id] && msg.text){
     for(let k of msg.text.split("\n")){
       if(k.trim()){
         await Key.create({plan:selectedPlan[id], key:k.trim()});
@@ -199,9 +211,7 @@ CONTACT: @GODx_COBRA`);
 📦 PLAN: ${plans[p].name}
 
 💳 UPI ID:
-\`${UPI_ID}\`
-
-⚠️ SEND SCREENSHOT OR UTR AFTER PAYMENT`,
+\`${UPI_ID}\``,
       parse_mode:"Markdown",
       reply_markup:{
         inline_keyboard:[
@@ -221,8 +231,9 @@ CONTACT: @GODx_COBRA`);
     return bot.sendMessage(id,"ENTER UTR",{reply_markup:{force_reply:true}});
   }
 
+  // ✅ APPROVE FIX (BUTTON HIDE)
   if(d.startsWith("approve_")){
-    bot.editMessageReplyMarkup({inline_keyboard:[]},{
+    await bot.editMessageReplyMarkup({inline_keyboard:[]},{
       chat_id:q.message.chat.id,
       message_id:q.message.message_id
     });
@@ -262,8 +273,9 @@ CONTACT: @GODx_COBRA`);
     delete userUTR[uid];
   }
 
+  // ✅ REJECT FIX (BUTTON HIDE)
   if(d.startsWith("reject_")){
-    bot.editMessageReplyMarkup({inline_keyboard:[]},{
+    await bot.editMessageReplyMarkup({inline_keyboard:[]},{
       chat_id:q.message.chat.id,
       message_id:q.message.message_id
     });
@@ -311,3 +323,7 @@ bot.onText(/\/admin/,msg=>{
     }
   });
 });
+
+// ===== CRASH FIX =====
+process.on("uncaughtException", err => console.log(err));
+process.on("unhandledRejection", err => console.log(err));
