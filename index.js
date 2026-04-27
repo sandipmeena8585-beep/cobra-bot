@@ -87,13 +87,13 @@ ${getStockText()}
 // 🏠 HOME PANEL
 function showHome(chatId){
   bot.sendMessage(chatId,
-`🏠 COBRA APP
+`🏠 𝗖𝗢𝗕𝗥𝗔 𝗔𝗣𝗣
 
 ━━━━━━━━━━━━━━
-💎 PREMIUM ACCESS PANEL
+💎 𝐏𝐑𝐄𝐌𝐈𝐔𝐌 𝐀𝐂𝐂𝐄𝐒𝐒 𝐏𝐀𝐍𝐄𝐋
 ━━━━━━━━━━━━━━
 
-👇 SELECT OPTION`,
+👇 𝐒𝐄𝐋𝐄𝐂𝐓 𝐎𝐏𝐓𝐈𝐎𝐍`,
 {
   reply_markup:{
     inline_keyboard:[
@@ -205,14 +205,14 @@ bot.on("callback_query",q=>{
   // INFO PANEL
   if(d==="app_info"){
     return bot.sendMessage(id,
-`📊 INFO PANEL
+`📊 𝗜𝗡𝗙𝗢 𝗣𝗔𝗡𝗘𝗟
 
-💎 FULL TRUST 😎
-🚫 NO SCAM ❌
-⚡ FAST DELIVERY
-🔐 SAFE & SECURE SYSTEM
+💎 𝐅𝐔𝐋𝐋 𝐓𝐑𝐔𝐒𝐓 😎
+🚫 𝐍𝐎 𝐒𝐂𝐀𝐌 ❌
+⚡ 𝐅𝐀𝐒𝐓 𝐃𝐄𝐋𝐈𝐕𝐄𝐑𝐘
+🔐 𝐒𝐀𝐅𝐄 & 𝐒𝐄𝐂𝐔𝐑𝐄 𝐒𝐘𝐒𝐓𝐄𝐌
 
-Join channel 👇`,
+𝙹𝚘𝚒𝚗 𝚌𝚑𝚊𝚗𝚗𝚎𝚕 👇`,
 {
       reply_markup:{
         inline_keyboard:[
