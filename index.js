@@ -24,17 +24,8 @@ mongoose.connect("mongodb+srv://sandipmeena8585_db_user:Tck2CfHfuw2Odb2k@cluster
 .catch(err=>console.log(err));
 
 // SCHEMA
-const Key = mongoose.model("Key",{
-  plan:String,
-  key:String
-});
-
-const Sold = mongoose.model("Sold",{
-  user:String,
-  key:String,
-  plan:String,
-  expiry:String
-});
+const Key = mongoose.model("Key",{ plan:String, key:String });
+const Sold = mongoose.model("Sold",{ user:String, key:String, plan:String, expiry:String });
 
 // PLANS
 const plans = {
@@ -96,10 +87,10 @@ ${stock}
 // 🏠 HOME
 function showHome(chatId){
   bot.sendMessage(chatId,
-`🏠 COBRA APP
+`🏠 𝗖𝗢𝗕𝗥𝗔 𝗔𝗣𝗣
 
 ━━━━━━━━━━━━━━
-💎 PREMIUM ACCESS PANEL
+💎 𝐏𝐑𝐄𝐌𝐈𝐔𝐌 𝐀𝐂𝐂𝐄𝐒𝐒
 ━━━━━━━━━━━━━━
 
 👇 SELECT OPTION`,
@@ -120,10 +111,11 @@ function showHome(chatId){
 
 bot.onText(/\/start/,msg=>showHome(msg.chat.id));
 
-// MESSAGE
+// MESSAGE HANDLER
 bot.on("message", async msg=>{
   let id = msg.from.id;
 
+  // SCREENSHOT
   if(waitingScreenshot[id] && msg.photo){
     let plan=userPlan[id];
     if(!plan) return showHome(id);
@@ -143,19 +135,44 @@ bot.on("message", async msg=>{
     return;
   }
 
+  // UTR
+  if(msg.reply_to_message && msg.reply_to_message.text.includes("ENTER YOUR UTR")){
+    let plan=userPlan[id];
+    if(!plan) return showHome(id);
+
+    bot.sendMessage(ADMIN_ID,
+`📥 PAYMENT REQUEST
+
+USER:${id}
+PLAN:${plan.name}
+UTR:${msg.text}`,
+{
+  reply_markup:{
+    inline_keyboard:[[
+      {text:"✅ VERIFY",callback_data:`approve_${id}`},
+      {text:"❌ REJECT",callback_data:`reject_${id}`}
+    ]]
+  }
+});
+
+    bot.sendMessage(id,"⏳ WAIT ADMIN");
+    return;
+  }
+
+  // ADD STOCK
   if(selectedPlan[id]){
-    let lines = msg.text.split("\n");
-    for(let k of lines){
+    msg.text.split("\n").forEach(async k=>{
       if(k.trim()){
         await Key.create({plan:selectedPlan[id],key:k.trim()});
       }
-    }
+    });
 
-    bot.sendMessage(id,"✅ STOCK ADDED");
+    bot.sendMessage(id,`✅ STOCK UPDATED\n${await getStockText()}`);
     selectedPlan[id]=null;
     return;
   }
 
+  // RANDOM → HOME
   if(msg.text && !msg.text.startsWith("/") && !msg.reply_to_message){
     showHome(id);
   }
@@ -168,6 +185,7 @@ bot.on("callback_query", async q=>{
 
   if(d==="app_home") return showHome(id);
 
+  // BUY
   if(d==="app_buy"){
     return bot.sendMessage(id,"🛒 SELECT PLAN",{
       reply_markup:{
@@ -181,11 +199,13 @@ bot.on("callback_query", async q=>{
     });
   }
 
+  // INFO
   if(d==="app_info"){
     return bot.sendMessage(id,
 `💎 FULL TRUST 😎
 🚫 NO SCAM ❌
-⚡ FAST DELIVERY`,
+⚡ FAST DELIVERY
+🔐 SAFE SYSTEM`,
 {
       reply_markup:{
         inline_keyboard:[
@@ -196,19 +216,26 @@ bot.on("callback_query", async q=>{
     });
   }
 
+  // HELP
   if(d==="app_help"){
     return bot.sendMessage(id,
-`CONTACT: @GODx_COBRA`,
+`⚙️ HELP
+
+1. Select plan
+2. Pay UPI
+3. Send proof
+4. Get key`,
 {
       reply_markup:{
         inline_keyboard:[
-          [{text:"OPEN DM",url:"https://t.me/GODx_COBRA"}],
+          [{text:"💬 OPEN DM",url:"https://t.me/GODx_COBRA"}],
           [{text:"⬅️ HOME",callback_data:"app_home"}]
         ]
       }
     });
   }
 
+  // BUY FLOW
   if(d.startsWith("buy_")){
     let p=d.split("_")[1];
     userPlan[id]={...plans[p],id:p};
@@ -216,12 +243,16 @@ bot.on("callback_query", async q=>{
     bot.sendPhoto(id,QR_LINK,{
       caption:`💰 PAYMENT
 
-${plans[p].name}
+👤 ${PAYMENT_NAME}
+📦 ${plans[p].name}
 
-UPI: ${UPI_ID}`,
+UPI:
+\`${UPI_ID}\``,
+      parse_mode:"Markdown",
       reply_markup:{
         inline_keyboard:[
-          [{text:"📸 SCREENSHOT",callback_data:"screenshot"}]
+          [{text:"📸 SCREENSHOT",callback_data:"screenshot"}],
+          [{text:"💳 ENTER UTR",callback_data:"enter_utr"}]
         ]
       }
     });
@@ -229,13 +260,22 @@ UPI: ${UPI_ID}`,
 
   if(d==="screenshot"){
     waitingScreenshot[id]=true;
-    bot.sendMessage(id,"SEND SCREENSHOT");
+    bot.sendMessage(id,"📸 SEND SCREENSHOT");
+  }
+
+  if(d==="enter_utr"){
+    bot.sendMessage(id,"ENTER YOUR UTR",{reply_markup:{force_reply:true}});
   }
 
   // APPROVE
   if(d.startsWith("approve_")){
+    bot.editMessageReplyMarkup({inline_keyboard:[]},{
+      chat_id:q.message.chat.id,message_id:q.message.message_id
+    });
+
     let uid=d.split("_")[1];
     let plan=userPlan[uid];
+    if(!plan) return;
 
     let item = await Key.findOne({plan:plan.id});
     if(!item) return bot.sendMessage(ADMIN_ID,"❌ STOCK EMPTY");
@@ -246,9 +286,7 @@ UPI: ${UPI_ID}`,
     let expiry=new Date();
     expiry.setDate(expiry.getDate()+plan.days);
 
-    await Sold.create({
-      user:uid,key,plan:plan.name,expiry:expiry.toISOString()
-    });
+    await Sold.create({user:uid,key,plan:plan.name,expiry:expiry.toISOString()});
 
     bot.sendMessage(uid,
 `🔥 *COBRA PREMIUM ACCESS*
@@ -271,6 +309,18 @@ UPI: ${UPI_ID}`,
     delete userPlan[uid];
   }
 
+  // REJECT
+  if(d.startsWith("reject_")){
+    bot.editMessageReplyMarkup({inline_keyboard:[]},{
+      chat_id:q.message.chat.id,message_id:q.message.message_id
+    });
+
+    let uid=d.split("_")[1];
+    delete userPlan[uid];
+    bot.sendMessage(uid,"❌ PAYMENT REJECTED");
+  }
+
+  // ADMIN
   if(d==="addstock"){
     bot.sendMessage(id,"SELECT PLAN",{
       reply_markup:{
@@ -286,6 +336,7 @@ UPI: ${UPI_ID}`,
   }
 
   if(d==="full_report") return bot.sendMessage(id,await getFullReport());
+  if(d==="check_stock") return bot.sendMessage(id,await getStockText());
 
   if(d.startsWith("plan")){
     selectedPlan[id]=d;
@@ -293,15 +344,16 @@ UPI: ${UPI_ID}`,
   }
 });
 
-// ADMIN
+// ADMIN PANEL
 bot.onText(/\/admin/,msg=>{
   if(msg.from.id!==ADMIN_ID) return;
 
-  bot.sendMessage(msg.chat.id,"ADMIN PANEL",{
+  bot.sendMessage(msg.chat.id,"⚙️ ADMIN PANEL",{
     reply_markup:{
       inline_keyboard:[
-        [{text:"ADD STOCK",callback_data:"addstock"}],
-        [{text:"FULL REPORT",callback_data:"full_report"}]
+        [{text:"➕ ADD STOCK",callback_data:"addstock"}],
+        [{text:"📊 FULL REPORT",callback_data:"full_report"}],
+        [{text:"📦 CHECK STOCK",callback_data:"check_stock"}]
       ]
     }
   });
