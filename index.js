@@ -2,9 +2,11 @@ const TelegramBot = require('node-telegram-bot-api');
 const express = require("express");
 const mongoose = require("mongoose");
 
-// ===== CONFIG =====
-const token = 8304628992:AAF2gzdL33mdIkBuoVMUQUbzTOQZEeUvoqI;
-const MONGO_URL = mongodb+srv://sandipmeena8585_db_user:Tck2CfHfuw2Odb2k@cluster0.uqwcyyn.mongodb.net/?appName=Cluster0;
+// ===== CONFIG (DIRECT SET) =====
+const token = "8304628992:AAF2gzdL33mdIkBuoVMUQUbzTOQZEeUvoqI";
+
+const MONGO_URL = "mongodb+srv://sandipmeena8585_db_user:Tck2CfHfuw2Odb2k@cluster0.uqwcyyn.mongodb.net/?retryWrites=true&w=majority";
+
 const ADMIN_ID = 7707237527;
 
 const CHANNEL_LINK = "https://t.me/+wRZN39fdVcRkYTM9";
@@ -26,10 +28,7 @@ mongoose.connect(MONGO_URL)
 .catch(err=>console.log(err));
 
 // ===== MODELS =====
-const Key = mongoose.model("Key", {
-  plan:String,
-  key:String
-});
+const Key = mongoose.model("Key", { plan:String, key:String });
 
 const Sale = mongoose.model("Sale", {
   user:String,
@@ -48,10 +47,7 @@ const plans = {
   plan5:{name:"🗝️ 60 DAY - 1200₹",days:60}
 };
 
-let userPlan = {};
-let waitingScreenshot = {};
-let selectedPlan = {};
-let userUTR = {};
+let userPlan={}, waitingScreenshot={}, selectedPlan={}, userUTR={};
 
 // ===== STOCK =====
 async function getStockText(){
@@ -83,17 +79,15 @@ function showHome(id){
 });
 }
 
-// START
-bot.onText(/\/start/, msg => showHome(msg.chat.id));
+bot.onText(/\/start/,msg=>showHome(msg.chat.id));
 
 // ===== MESSAGE =====
-bot.on("message", async msg=>{
-  const id = msg.from.id;
+bot.on("message",async msg=>{
+  let id = msg.from.id;
 
-  // UTR
   if(msg.reply_to_message && msg.reply_to_message.text.includes("ENTER UTR")){
     userUTR[id] = msg.text;
-    const plan = userPlan[id];
+    let plan=userPlan[id];
 
     bot.sendMessage(ADMIN_ID,
 `📥 PAYMENT REQUEST
@@ -112,11 +106,10 @@ UTR: ${msg.text}`,{
     return bot.sendMessage(id,"⏳ WAIT ADMIN");
   }
 
-  // SCREENSHOT
   if(waitingScreenshot[id] && msg.photo){
-    const plan = userPlan[id];
+    let plan=userPlan[id];
 
-    bot.sendPhoto(ADMIN_ID, msg.photo[msg.photo.length-1].file_id,{
+    bot.sendPhoto(ADMIN_ID,msg.photo[msg.photo.length-1].file_id,{
       caption:`📸 PAYMENT\nUSER:${id}\nPLAN:${plan.name}`,
       reply_markup:{
         inline_keyboard:[[
@@ -126,11 +119,10 @@ UTR: ${msg.text}`,{
       }
     });
 
-    waitingScreenshot[id] = false;
+    waitingScreenshot[id]=false;
     return bot.sendMessage(id,"⏳ WAIT ADMIN");
   }
 
-  // ADD STOCK
   if(selectedPlan[id]){
     for(let k of msg.text.split("\n")){
       if(k.trim()){
@@ -138,7 +130,7 @@ UTR: ${msg.text}`,{
       }
     }
 
-    selectedPlan[id] = null;
+    selectedPlan[id]=null;
     return bot.sendMessage(id,"✅ STOCK ADDED");
   }
 
@@ -147,13 +139,11 @@ UTR: ${msg.text}`,{
   }
 });
 
-// ===== BUTTON =====
-bot.on("callback_query", async q=>{
-  const id = q.from.id;
-  const d = q.data;
+// ===== BUTTONS =====
+bot.on("callback_query",async q=>{
+  let d=q.data,id=q.from.id;
   bot.answerCallbackQuery(q.id);
 
-  // BUY MENU
   if(d==="buy"){
     return bot.sendMessage(id,"SELECT PLAN",{
       reply_markup:{
@@ -164,7 +154,6 @@ bot.on("callback_query", async q=>{
     });
   }
 
-  // INFO (STOCK)
   if(d==="info"){
     const stock = await getStockText();
     return bot.sendMessage(id,
@@ -181,7 +170,6 @@ bot.on("callback_query", async q=>{
     });
   }
 
-  // HELP
   if(d==="help"){
     return bot.sendMessage(id,
 `⚙️ HELP
@@ -194,12 +182,11 @@ bot.on("callback_query", async q=>{
 CONTACT: @GODx_COBRA`);
   }
 
-  // BUY FLOW
   if(d.startsWith("buy_")){
-    const p = d.split("_")[1];
-    userPlan[id] = {...plans[p], id:p};
+    let p=d.split("_")[1];
+    userPlan[id]={...plans[p],id:p};
 
-    return bot.sendPhoto(id, QR_LINK,{
+    return bot.sendPhoto(id,QR_LINK,{
       caption:`💰 PAYMENT DETAILS
 
 👤 NAME: ${PAYMENT_NAME}
@@ -228,15 +215,14 @@ CONTACT: @GODx_COBRA`);
     return bot.sendMessage(id,"ENTER UTR",{reply_markup:{force_reply:true}});
   }
 
-  // APPROVE
   if(d.startsWith("approve_")){
-    const uid = d.split("_")[1];
-    const plan = userPlan[uid];
+    let uid=d.split("_")[1];
+    let plan=userPlan[uid];
 
-    const keyData = await Key.findOneAndDelete({plan:plan.id});
+    let keyData = await Key.findOneAndDelete({plan:plan.id});
     if(!keyData) return bot.sendMessage(ADMIN_ID,"❌ STOCK EMPTY");
 
-    let expiry = new Date();
+    let expiry=new Date();
     expiry.setDate(expiry.getDate()+plan.days);
 
     await Sale.create({
@@ -265,14 +251,12 @@ CONTACT: @GODx_COBRA`);
     delete userUTR[uid];
   }
 
-  // REJECT
   if(d.startsWith("reject_")){
-    const uid = d.split("_")[1];
+    let uid=d.split("_")[1];
     delete userPlan[uid];
     bot.sendMessage(uid,"❌ PAYMENT REJECTED");
   }
 
-  // ADMIN
   if(d==="addstock"){
     return bot.sendMessage(id,"SELECT PLAN",{
       reply_markup:{
@@ -298,8 +282,8 @@ CONTACT: @GODx_COBRA`);
   }
 });
 
-// ADMIN PANEL
-bot.onText(/\/admin/, msg=>{
+// ===== ADMIN =====
+bot.onText(/\/admin/,msg=>{
   if(msg.from.id!==ADMIN_ID) return;
 
   bot.sendMessage(msg.chat.id,"⚙️ ADMIN PANEL",{
@@ -311,7 +295,3 @@ bot.onText(/\/admin/, msg=>{
     }
   });
 });
-
-// CRASH SAFE
-process.on("uncaughtException", console.log);
-process.on("unhandledRejection", console.log);
