@@ -3,8 +3,8 @@ const express = require("express");
 const mongoose = require("mongoose");
 
 // ===== CONFIG =====
-const token = process.env.BOT_TOKEN || "8304628992:AAF2gzdL33mdIkBuoVMUQUbzTOQZEeUvoqI";
-const MONGO_URL = process.env.MONGO_URL || "mongodb+srv://sandipmeena8585_db_user:Tck2CfHfuw2Odb2k@cluster0.uqwcyyn.mongodb.net/?appName=Cluster0";
+const token = process.env.8304628992:AAF2gzdL33mdIkBuoVMUQUbzTOQZEeUvoqI;
+const MONGO_URL = process.env.mongodb+srv://sandipmeena8585_db_user:Tck2CfHfuw2Odb2k@cluster0.uqwcyyn.mongodb.net/?appName=Cluster0;
 const ADMIN_ID = 7707237527;
 
 const CHANNEL_LINK = "https://t.me/+wRZN39fdVcRkYTM9";
@@ -13,13 +13,10 @@ const UPI_ID = "godxcobra@axl";
 const PAYMENT_NAME = "SANDIP MEENA";
 
 // ===== BOT =====
-const bot = new TelegramBot(token, {
-  polling: { interval: 300, autoStart: true }
-});
+const bot = new TelegramBot(token, { polling: true });
 
 // ===== SERVER =====
 const app = express();
-app.use(express.json());
 app.get("/", (req,res)=>res.send("RUNNING"));
 app.listen(process.env.PORT || 3000);
 
@@ -29,11 +26,7 @@ mongoose.connect(MONGO_URL)
 .catch(err=>console.log(err));
 
 // ===== MODELS =====
-const Key = mongoose.model("Key", {
-  plan:String,
-  key:String
-});
-
+const Key = mongoose.model("Key", { plan:String, key:String });
 const Sale = mongoose.model("Sale", {
   user:String,
   key:String,
@@ -51,30 +44,42 @@ const plans = {
   plan5:{name:"🗝️ 60 DAY - 1200₹",days:60}
 };
 
-let userPlan={}, selectedPlan={}, waitingScreenshot={}, userUTR={};
+let userPlan={}, waitingScreenshot={}, selectedPlan={}, userUTR={};
 
-// ===== STOCK =====
-async function getStock(){
-  return {
-    plan1: await Key.countDocuments({plan:"plan1"}),
-    plan2: await Key.countDocuments({plan:"plan2"}),
-    plan3: await Key.countDocuments({plan:"plan3"}),
-    plan4: await Key.countDocuments({plan:"plan4"}),
-    plan5: await Key.countDocuments({plan:"plan5"})
-  };
+// ===== STOCK FUNCTION =====
+async function getStockText(){
+  const p1 = await Key.countDocuments({plan:"plan1"});
+  const p2 = await Key.countDocuments({plan:"plan2"});
+  const p3 = await Key.countDocuments({plan:"plan3"});
+  const p4 = await Key.countDocuments({plan:"plan4"});
+  const p5 = await Key.countDocuments({plan:"plan5"});
+
+  return `📦 LIVE STOCK
+
+🗝️ 1 DAY  : ${p1}
+🗝️ 7 DAY  : ${p2}
+🗝️ 15 DAY : ${p3}
+🗝️ 30 DAY : ${p4}
+🗝️ 60 DAY : ${p5}`;
 }
 
 // ===== HOME =====
 function showHome(id){
-  bot.sendMessage(id,`🏠 COBRA PANEL`,{
-    reply_markup:{
-      inline_keyboard:[
-        [{text:"🛒 BUY",callback_data:"buy"}],
-        [{text:"📊 INFO",callback_data:"info"}],
-        [{text:"⚙️ HELP",callback_data:"help"}]
-      ]
-    }
-  });
+  bot.sendMessage(id,
+`🏠 COBRA PANEL
+
+💎 PREMIUM ACCESS
+
+👇 SELECT OPTION`,
+{
+  reply_markup:{
+    inline_keyboard:[
+      [{text:"🛒 BUY",callback_data:"buy"}],
+      [{text:"📊 INFO",callback_data:"info"}],
+      [{text:"⚙️ HELP",callback_data:"help"}]
+    ]
+  }
+});
 }
 
 bot.onText(/\/start/,msg=>showHome(msg.chat.id));
@@ -86,7 +91,6 @@ bot.on("message",async msg=>{
   // UTR
   if(msg.reply_to_message && msg.reply_to_message.text.includes("ENTER UTR")){
     userUTR[id] = msg.text;
-
     let plan=userPlan[id];
 
     bot.sendMessage(ADMIN_ID,
@@ -111,7 +115,7 @@ UTR: ${msg.text}`,{
   if(waitingScreenshot[id] && msg.photo){
     let plan=userPlan[id];
 
-    bot.sendPhoto(ADMIN_ID,msg.photo.pop().file_id,{
+    bot.sendPhoto(ADMIN_ID,msg.photo[msg.photo.length-1].file_id,{
       caption:`📸 PAYMENT\nUSER:${id}\nPLAN:${plan.name}`,
       reply_markup:{
         inline_keyboard:[[
@@ -129,6 +133,7 @@ UTR: ${msg.text}`,{
   // ADD STOCK
   if(selectedPlan[id]){
     let lines = msg.text.split("\n");
+
     for(let k of lines){
       if(k.trim()){
         await Key.create({plan:selectedPlan[id],key:k.trim()});
@@ -138,6 +143,10 @@ UTR: ${msg.text}`,{
     bot.sendMessage(id,"✅ STOCK ADDED");
     selectedPlan[id]=null;
     return;
+  }
+
+  if(msg.text && !msg.text.startsWith("/")){
+    showHome(id);
   }
 });
 
@@ -157,18 +166,16 @@ bot.on("callback_query",async q=>{
     });
   }
 
-  // INFO
+  // INFO (STOCK SHOW)
   if(d==="info"){
-    let stock = await getStock();
+    const stockText = await getStockText();
 
     return bot.sendMessage(id,
-`📊 LIVE STOCK
+`${stockText}
 
-1D: ${stock.plan1}
-7D: ${stock.plan2}
-15D: ${stock.plan3}
-30D: ${stock.plan4}
-60D: ${stock.plan5}`,{
+━━━━━━━━━━━━━━
+💎 TRUSTED SERVICE`,
+{
       reply_markup:{
         inline_keyboard:[
           [{text:"📦 JOIN NOW",url:CHANNEL_LINK}]
@@ -179,7 +186,15 @@ bot.on("callback_query",async q=>{
 
   // HELP
   if(d==="help"){
-    return bot.sendMessage(id,"CONTACT: @GODx_COBRA");
+    return bot.sendMessage(id,
+`⚙️ HELP
+
+1. SELECT PLAN
+2. PAY
+3. SEND SCREENSHOT / UTR
+4. GET KEY
+
+CONTACT: @GODx_COBRA`);
   }
 
   // BUY FLOW
@@ -188,7 +203,16 @@ bot.on("callback_query",async q=>{
     userPlan[id]={...plans[p],id:p};
 
     bot.sendPhoto(id,QR_LINK,{
-      caption:`PAY HERE\nUPI: ${UPI_ID}`,
+      caption:`💰 PAYMENT DETAILS
+
+👤 NAME: ${PAYMENT_NAME}
+📦 PLAN: ${plans[p].name}
+
+💳 UPI ID:
+\`${UPI_ID}\`
+
+⚠️ SEND SCREENSHOT OR UTR AFTER PAYMENT`,
+      parse_mode:"Markdown",
       reply_markup:{
         inline_keyboard:[
           [{text:"📸 SCREENSHOT",callback_data:"ss"}],
@@ -229,8 +253,10 @@ bot.on("callback_query",async q=>{
     bot.sendMessage(uid,
 `✅ VERIFIED
 
-🔑 ${keyData.key}
-📅 ${expiry.toDateString()}`,{
+🔑 \`${keyData.key}\`
+📅 ${expiry.toDateString()}`,
+{
+      parse_mode:"Markdown",
       reply_markup:{
         inline_keyboard:[
           [{text:"📦 JOIN NOW",url:CHANNEL_LINK}]
@@ -266,20 +292,20 @@ bot.on("callback_query",async q=>{
 
   if(d==="report"){
     let total = await Sale.countDocuments();
-    return bot.sendMessage(id,`💰 TOTAL SOLD: ${total}`);
+    bot.sendMessage(id,`💰 TOTAL SOLD: ${total}`);
   }
 
   if(d.startsWith("plan")){
     selectedPlan[id]=d;
-    bot.sendMessage(id,"SEND KEYS");
+    bot.sendMessage(id,"SEND KEYS (ONE PER LINE)");
   }
 });
 
-// ===== ADMIN =====
+// ===== ADMIN PANEL =====
 bot.onText(/\/admin/,msg=>{
   if(msg.from.id!==ADMIN_ID) return;
 
-  bot.sendMessage(msg.chat.id,"ADMIN PANEL",{
+  bot.sendMessage(msg.chat.id,"⚙️ ADMIN PANEL",{
     reply_markup:{
       inline_keyboard:[
         [{text:"➕ ADD STOCK",callback_data:"addstock"}],
