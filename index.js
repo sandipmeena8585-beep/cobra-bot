@@ -12,27 +12,22 @@ const QR_LINK = "https://images.weserv.nl/?url=raw.githubusercontent.com/sandipm
 const UPI_ID = "godxcobra@axl";
 const PAYMENT_NAME = "SANDIP MEENA";
 
-// ===== BOT (FIXED) =====
-const bot = new TelegramBot(token, {
-  polling: {
-    interval: 300,
-    autoStart: true,
-    params: { timeout: 10 }
-  }
-});
-
 // ===== SERVER =====
 const app = express();
 app.get("/", (req,res)=>res.send("RUNNING"));
 app.listen(process.env.PORT || 3000);
 
-// ===== DB (FIXED) =====
-mongoose.connect(MONGO_URL, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
+// ===== DB CONNECT =====
+mongoose.connect(MONGO_URL)
+.then(()=>{
+  console.log("MongoDB Connected ✅");
+
+  // ✅ BOT START AFTER DB
+  const bot = new TelegramBot(token, { polling: true });
+
+  startBot(bot);
 })
-.then(()=>console.log("MongoDB Connected ✅"))
-.catch(err=>console.log("Mongo Error ❌", err));
+.catch(err=>console.log(err));
 
 // ===== MODELS =====
 const Key = mongoose.model("Key", { plan:String, key:String });
@@ -73,7 +68,7 @@ async function getStockText(){
 }
 
 // ===== HOME =====
-function showHome(id){
+function showHome(bot,id){
   bot.sendMessage(id,
 `🏠 COBRA PANEL
 
@@ -91,13 +86,15 @@ function showHome(id){
 });
 }
 
-bot.onText(/\/start/,msg=>showHome(msg.chat.id));
+// ===== MAIN BOT FUNCTION =====
+function startBot(bot){
+
+bot.onText(/\/start/,msg=>showHome(bot,msg.chat.id));
 
 // ===== MESSAGE =====
 bot.on("message",async msg=>{
   let id = msg.from.id;
 
-  // UTR
   if(msg.reply_to_message && msg.reply_to_message.text.includes("ENTER UTR")){
     userUTR[id] = msg.text;
     let plan=userPlan[id];
@@ -119,7 +116,6 @@ UTR: ${msg.text}`,{
     return bot.sendMessage(id,"⏳ WAIT ADMIN");
   }
 
-  // SCREENSHOT
   if(waitingScreenshot[id] && msg.photo){
     let plan=userPlan[id];
 
@@ -137,8 +133,7 @@ UTR: ${msg.text}`,{
     return bot.sendMessage(id,"⏳ WAIT ADMIN");
   }
 
-  // ADD STOCK (FIX SAFE)
-  if(selectedPlan[id] && msg.text){
+  if(selectedPlan[id]){
     for(let k of msg.text.split("\n")){
       if(k.trim()){
         await Key.create({plan:selectedPlan[id], key:k.trim()});
@@ -153,7 +148,7 @@ UTR: ${msg.text}`,{
   }
 
   if(msg.text && !msg.text.startsWith("/")){
-    showHome(id);
+    showHome(bot,id);
   }
 });
 
@@ -211,7 +206,9 @@ CONTACT: @GODx_COBRA`);
 📦 PLAN: ${plans[p].name}
 
 💳 UPI ID:
-\`${UPI_ID}\``,
+\`${UPI_ID}\`
+
+⚠️ SEND SCREENSHOT OR UTR AFTER PAYMENT`,
       parse_mode:"Markdown",
       reply_markup:{
         inline_keyboard:[
@@ -231,7 +228,7 @@ CONTACT: @GODx_COBRA`);
     return bot.sendMessage(id,"ENTER UTR",{reply_markup:{force_reply:true}});
   }
 
-  // ✅ APPROVE FIX (BUTTON HIDE)
+  // ✅ APPROVE (BUTTON HIDE FIX)
   if(d.startsWith("approve_")){
     await bot.editMessageReplyMarkup({inline_keyboard:[]},{
       chat_id:q.message.chat.id,
@@ -273,7 +270,7 @@ CONTACT: @GODx_COBRA`);
     delete userUTR[uid];
   }
 
-  // ✅ REJECT FIX (BUTTON HIDE)
+  // ✅ REJECT (BUTTON HIDE FIX)
   if(d.startsWith("reject_")){
     await bot.editMessageReplyMarkup({inline_keyboard:[]},{
       chat_id:q.message.chat.id,
@@ -324,6 +321,4 @@ bot.onText(/\/admin/,msg=>{
   });
 });
 
-// ===== CRASH FIX =====
-process.on("uncaughtException", err => console.log(err));
-process.on("unhandledRejection", err => console.log(err));
+}
