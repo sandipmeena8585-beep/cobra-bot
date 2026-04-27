@@ -3,7 +3,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 
 // ===== CONFIG =====
-const token = process.env.BOT_TOKEN || "PUT_YOUR_TOKEN";
+const token = process.env.BOT_TOKEN || "8304628992:AAFHjdhzF33fiH2QHjQScU9lK2zgqAx7nIc";
 const MONGO_URL = process.env.MONGO_URL || "mongodb+srv://COBRA:Cobra%4012345@cluster0.uqwcyny.mongodb.net/cobra?retryWrites=true&w=majority";
 const ADMIN_ID = 7707237527;
 
