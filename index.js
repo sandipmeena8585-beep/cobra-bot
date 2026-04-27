@@ -1,3 +1,4 @@
+
 const TelegramBot = require('node-telegram-bot-api');
 const express = require("express");
 const fs = require("fs");
@@ -46,7 +47,7 @@ const plans = {
 
 let userPlan={}, selectedPlan={}, waitingScreenshot={};
 
-// 🔥 STOCK TEXT
+// 🔥 STOCK (ADMIN ONLY)
 function getStockText(){
   return `📦 LIVE STOCK
 
@@ -83,28 +84,33 @@ ${getStockText()}
   return text;
 }
 
-// MENU
-function showMenu(chatId){
+// 🏠 APP HOME
+function showHome(chatId){
   bot.sendMessage(chatId,
-`🔥 COBRA VIP PANEL 🔥
+`🏠 COBRA APP
 
-💎 PREMIUM KEY STORE
+━━━━━━━━━━━━━━
+💎 PREMIUM ACCESS PANEL
+━━━━━━━━━━━━━━
 
-👇 SELECT YOUR PLAN`,
+👇 SELECT OPTION`,
 {
   reply_markup:{
     inline_keyboard:[
-      ...Object.keys(plans).map(p=>[
-        {text:plans[p].name,callback_data:`buy_${p}`}
-      ]),
-      [{text:"📦 CHECK STOCK",callback_data:"check_stock"}]
+      [
+        {text:"🛒 BUY",callback_data:"app_buy"},
+        {text:"📊 INFO",callback_data:"app_info"}
+      ],
+      [
+        {text:"⚙️ HELP",callback_data:"app_help"}
+      ]
     ]
   }
 });
 }
 
 // START
-bot.onText(/\/start/,msg=>showMenu(msg.chat.id));
+bot.onText(/\/start/,msg=>showHome(msg.chat.id));
 
 // MESSAGE
 bot.on("message",msg=>{
@@ -168,8 +174,6 @@ UTR:${msg.text}`,
     selectedPlan[id]=null;
     return;
   }
-
-  if(msg.text && !msg.text.startsWith("/")) showMenu(msg.chat.id);
 });
 
 // BUTTONS
@@ -177,9 +181,62 @@ bot.on("callback_query",q=>{
   let d=q.data,id=q.from.id;
   bot.answerCallbackQuery(q.id);
 
-  if(d==="check_stock") return bot.sendMessage(id,getStockText());
+  // HOME
+  if(d==="app_home") return showHome(id);
 
-  // BUY
+  // BUY PANEL
+  if(d==="app_buy"){
+    return bot.sendMessage(id,
+`🛒 SELECT PLAN`,
+{
+  reply_markup:{
+    inline_keyboard:[
+      ...Object.keys(plans).map(p=>[
+        {text:plans[p].name,callback_data:`buy_${p}`}
+      ]),
+      [{text:"⬅️ HOME",callback_data:"app_home"}]
+    ]
+  }
+});
+  }
+
+  // INFO
+  if(d==="app_info"){
+    return bot.sendMessage(id,
+`📊 INFO
+
+💰 UPI PAYMENT
+⚡ FAST DELIVERY
+🔐 SECURE ACCESS`,
+{
+  reply_markup:{
+    inline_keyboard:[
+      [{text:"📦 JOIN CHANNEL",url:CHANNEL_LINK}],
+      [{text:"⬅️ HOME",callback_data:"app_home"}]
+    ]
+  }
+});
+  }
+
+  // HELP
+  if(d==="app_help"){
+    return bot.sendMessage(id,
+`⚙️ HELP
+
+1. Select plan
+2. Pay
+3. Send screenshot/UTR
+4. Get key`,
+{
+  reply_markup:{
+    inline_keyboard:[
+      [{text:"⬅️ HOME",callback_data:"app_home"}]
+    ]
+  }
+});
+  }
+
+  // BUY FLOW
   if(d.startsWith("buy_")){
     let p=d.split("_")[1];
     userPlan[id]={...plans[p],id:p};
@@ -234,13 +291,12 @@ UPI:
     });
     saveJSON("data.json",data);
 
-    // 🔥 ADMIN DETAIL
     bot.sendMessage(ADMIN_ID,
 `✅ KEY SOLD
 
-👤 USER:${uid}
-📦 ${plan.name}
-🔑 ${key}
+USER:${uid}
+PLAN:${plan.name}
+KEY:${key}
 
 ${getStockText()}`);
 
@@ -282,6 +338,7 @@ ${getStockText()}`);
   }
 
   if(d==="full_report") return bot.sendMessage(id,getFullReport());
+  if(d==="check_stock") return bot.sendMessage(id,getStockText());
 
   if(d.startsWith("plan")){
     selectedPlan[id]=d;
