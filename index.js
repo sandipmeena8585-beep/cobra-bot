@@ -1,4 +1,3 @@
-
 const TelegramBot = require('node-telegram-bot-api');
 const express = require("express");
 const fs = require("fs");
@@ -6,10 +5,11 @@ const fs = require("fs");
 const token = process.env.BOT_TOKEN || "8304628992:AAF2gzdL33mdIkBuoVMUQUbzTOQZEeUvoqI";
 const ADMIN_ID = 7707237527;
 
-const QR_LINK = "https://images.weserv.nl/?url=raw.githubusercontent.com/sandipmeena8585-beep/cobra-bot/main/upi_qr.png&w=220&h=220";
+// ✅ UPDATED CHANNEL
+const CHANNEL_LINK = "https://t.me/+EjfiC_Zsw3liYmI9";
 
+const QR_LINK = "https://images.weserv.nl/?url=raw.githubusercontent.com/sandipmeena8585-beep/cobra-bot/main/upi_qr.png&w=220&h=220";
 const UPI_ID = "godxcobra@axl";
-const CHANNEL_LINK = "https://t.me/+wRZN39fdVcRkYTM9";
 const PAYMENT_NAME = "SANDIP MEENA";
 
 const bot = new TelegramBot(token, { polling: true });
@@ -19,7 +19,7 @@ const app = express();
 app.get("/", (req,res)=>res.send("RUNNING"));
 app.listen(process.env.PORT || 3000);
 
-// FILE
+// FILE SYSTEM
 function loadJSON(file, def){
   try{
     return JSON.parse(fs.readFileSync(file));
@@ -47,7 +47,7 @@ const plans = {
 
 let userPlan={}, selectedPlan={}, waitingScreenshot={};
 
-// 🔥 STOCK (ADMIN ONLY)
+// 🔒 ADMIN STOCK
 function getStockText(){
   return `📦 LIVE STOCK
 
@@ -58,7 +58,7 @@ function getStockText(){
 60 DAY : ${keys.plan5.length}`;
 }
 
-// 🔥 FULL REPORT
+// 📊 REPORT
 function getFullReport(){
   let text = `📊 FULL REPORT
 
@@ -84,7 +84,7 @@ ${getStockText()}
   return text;
 }
 
-// 🏠 APP HOME
+// 🏠 HOME PANEL
 function showHome(chatId){
   bot.sendMessage(chatId,
 `🏠 COBRA APP
@@ -112,14 +112,14 @@ function showHome(chatId){
 // START
 bot.onText(/\/start/,msg=>showHome(msg.chat.id));
 
-// MESSAGE
+// 🔥 ANY MESSAGE → HOME
 bot.on("message",msg=>{
-  let id=msg.from.id;
+  let id = msg.from.id;
 
   // SCREENSHOT
   if(waitingScreenshot[id] && msg.photo){
     let plan=userPlan[id];
-    if(!plan) return bot.sendMessage(id,"⚠️ Select plan again");
+    if(!plan) return showHome(id);
 
     bot.sendPhoto(ADMIN_ID,msg.photo.pop().file_id,{
       caption:`📸 PAYMENT\nUSER:${id}\nPLAN:${plan.name}`,
@@ -139,7 +139,7 @@ bot.on("message",msg=>{
   // UTR
   if(msg.reply_to_message && msg.reply_to_message.text.includes("ENTER YOUR UTR")){
     let plan=userPlan[id];
-    if(!plan) return bot.sendMessage(id,"⚠️ Select plan again");
+    if(!plan) return showHome(id);
 
     bot.sendMessage(ADMIN_ID,
 `📥 PAYMENT REQUEST
@@ -174,6 +174,11 @@ UTR:${msg.text}`,
     selectedPlan[id]=null;
     return;
   }
+
+  // DEFAULT → HOME
+  if(msg.text && !msg.text.startsWith("/")){
+    showHome(msg.chat.id);
+  }
 });
 
 // BUTTONS
@@ -181,59 +186,63 @@ bot.on("callback_query",q=>{
   let d=q.data,id=q.from.id;
   bot.answerCallbackQuery(q.id);
 
-  // HOME
   if(d==="app_home") return showHome(id);
 
   // BUY PANEL
   if(d==="app_buy"){
-    return bot.sendMessage(id,
-`🛒 SELECT PLAN`,
-{
-  reply_markup:{
-    inline_keyboard:[
-      ...Object.keys(plans).map(p=>[
-        {text:plans[p].name,callback_data:`buy_${p}`}
-      ]),
-      [{text:"⬅️ HOME",callback_data:"app_home"}]
-    ]
-  }
-});
+    return bot.sendMessage(id,`🛒 SELECT PLAN`,{
+      reply_markup:{
+        inline_keyboard:[
+          ...Object.keys(plans).map(p=>[
+            {text:plans[p].name,callback_data:`buy_${p}`}
+          ]),
+          [{text:"⬅️ HOME",callback_data:"app_home"}]
+        ]
+      }
+    });
   }
 
-  // INFO
+  // INFO PANEL
   if(d==="app_info"){
     return bot.sendMessage(id,
-`📊 INFO
+`📊 INFO PANEL
 
-💰 UPI PAYMENT
+💎 FULL TRUST 😎
+🚫 NO SCAM ❌
 ⚡ FAST DELIVERY
-🔐 SECURE ACCESS`,
+🔐 SAFE & SECURE SYSTEM
+
+Join channel 👇`,
 {
-  reply_markup:{
-    inline_keyboard:[
-      [{text:"📦 JOIN CHANNEL",url:CHANNEL_LINK}],
-      [{text:"⬅️ HOME",callback_data:"app_home"}]
-    ]
-  }
-});
+      reply_markup:{
+        inline_keyboard:[
+          [{text:"📦 JOIN CHANNEL",url:CHANNEL_LINK}],
+          [{text:"⬅️ HOME",callback_data:"app_home"}]
+        ]
+      }
+    });
   }
 
-  // HELP
+  // HELP PANEL
   if(d==="app_help"){
     return bot.sendMessage(id,
-`⚙️ HELP
+`⚙️ HELP CENTER
 
 1. Select plan
-2. Pay
-3. Send screenshot/UTR
-4. Get key`,
+2. Pay via UPI
+3. Send screenshot / UTR
+4. Get key
+
+━━━━━━━━━━━━━━
+👤 CONTACT: @GODx_COBRA`,
 {
-  reply_markup:{
-    inline_keyboard:[
-      [{text:"⬅️ HOME",callback_data:"app_home"}]
-    ]
-  }
-});
+      reply_markup:{
+        inline_keyboard:[
+          [{text:"💬 OPEN DM",url:"https://t.me/GODx_COBRA"}],
+          [{text:"⬅️ HOME",callback_data:"app_home"}]
+        ]
+      }
+    });
   }
 
   // BUY FLOW
