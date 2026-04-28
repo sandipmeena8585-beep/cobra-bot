@@ -9,7 +9,7 @@ const ADMIN_ID = 7707237527;
 
 const CHANNEL_LINK = "https://t.me/+wRZN39fdVcRkYTM9";
 const UPI_ID = "godxcobra@axl";
-const PAYMENT_NAME = "SANDIP MEENA";
+const PAYMENT_NAME = "𝐒𝐀𝐍𝐃𝐈𝐏 𝐌𝐄𝐄𝐍𝐀";
 const QR_LINK = "https://images.weserv.nl/?url=raw.githubusercontent.com/sandipmeena8585-beep/cobra-bot/main/upi_qr.png";
 
 // ===== SERVER =====
@@ -26,16 +26,23 @@ mongoose.connect(MONGO_URL);
 
 // ===== MODELS =====
 const Key = mongoose.model("Key",{plan:String,key:String});
-const Sale = mongoose.model("Sale",{user:String,key:String,plan:String,expiry:Date,utr:String,createdAt:{type:Date,default:Date.now}});
+const Sale = mongoose.model("Sale",{
+  user:String,
+  key:String,
+  plan:String,
+  expiry:Date,
+  utr:String,
+  createdAt:{type:Date,default:Date.now}
+});
 const User = mongoose.model("User",{id:Number});
 
 // ===== PLANS =====
 const plans = {
-  plan1:{name:"𝐀 1 DAY - 100₹",days:1},
-  plan2:{name:"𝐀 7 DAY - 400₹",days:7},
-  plan3:{name:"𝐀 15 DAY - 700₹",days:15},
-  plan4:{name:"𝐀 30 DAY - 900₹",days:30},
-  plan5:{name:"𝐀 60 DAY - 1200₹",days:60}
+  plan1:{name:"🗝️ 𝐀 1 DAY - 100₹",days:1},
+  plan2:{name:"🗝️ 𝐀 7 DAY - 400₹",days:7},
+  plan3:{name:"🗝️ 𝐀 15 DAY - 700₹",days:15},
+  plan4:{name:"🗝️ 𝐀 30 DAY - 900₹",days:30},
+  plan5:{name:"🗝️ 𝐀 60 DAY - 1200₹",days:60}
 };
 
 // ===== STATE =====
@@ -179,7 +186,7 @@ bot.on("callback_query", async q=>{
       parse_mode:"Markdown",
       reply_markup:{
         inline_keyboard:[
-          [{text:"📦 JOIN GROUP",url:CHANNEL_LINK}]
+          [{text:"📦 JOIN PAID GROUP",url:CHANNEL_LINK}]
         ]
       }
     });
@@ -193,10 +200,7 @@ bot.on("callback_query", async q=>{
 
     sales.forEach((s,i)=>{
       if(i===0){
-        txt+=`🔥 𝐋𝐀𝐓𝐄𝐒𝐓
-
-\`${s.key}\`
-${s.expiry}\n\n`;
+        txt+=`🔥 𝐋𝐀𝐓𝐄𝐒𝐓\n\`${s.key}\`\n${s.expiry}\n\n`;
       } else {
         txt+=`• \`${s.key}\`\n`;
       }
@@ -214,7 +218,16 @@ AIMBOT - 150M
 IPDA VIEW - YES / NO`);
   }
 
-  // ADMIN PANEL
+  if(d==="help"){
+    return bot.sendMessage(id,
+`⚙️ 𝐇𝐄𝐋𝐏
+
+PAYMENT ISSUE
+KEY ISSUE
+
+DM 👉 @GODx_COBRA`);
+  }
+
   if(d==="adminstats"){
     if(id!==ADMIN_ID) return;
 
