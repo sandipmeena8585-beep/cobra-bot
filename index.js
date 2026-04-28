@@ -11,6 +11,7 @@ const BOT_USERNAME = "GODx_cobraBOT";
 const CHANNEL_LINK = "https://t.me/+wRZN39fdVcRkYTM9";
 const UPI_ID = "godxcobra@axl";
 const PAYMENT_NAME = "SANDIP MEENA";
+const QR_LINK = "https://images.weserv.nl/?url=raw.githubusercontent.com/sandipmeena8585-beep/cobra-bot/main/upi_qr.png";
 
 // ===== SERVER =====
 const app = express();
@@ -22,9 +23,7 @@ app.listen(process.env.PORT || 3000);
 const bot = new TelegramBot(token,{ polling:true });
 
 // ===== DB =====
-mongoose.connect(MONGO_URL)
-.then(()=>console.log("Mongo Connected ✅"))
-.catch(err=>console.log("Mongo Error ❌",err));
+mongoose.connect(MONGO_URL);
 
 // ===== MODELS =====
 const Key = mongoose.model("Key",{plan:String,key:String});
@@ -41,7 +40,7 @@ const plans = {
 };
 
 // ===== STATE =====
-let userPlan={}, waitingUTR={}, userUTR={}, selectedPlan={}, useWallet={};
+let userPlan={}, waitingUTR={}, waitingSS={}, userUTR={}, selectedPlan={}, useWallet={};
 
 // ===== STOCK =====
 async function getStock(){
@@ -56,7 +55,11 @@ async function getStock(){
 
 // ===== HOME =====
 function home(id){
-  bot.sendMessage(id,"🏠 COBRA PANEL",{
+  bot.sendMessage(id,
+`🏠 COBRA PANEL
+━━━━━━━━━━━━━━
+Select Option
+━━━━━━━━━━━━━━`,{
     reply_markup:{
       inline_keyboard:[
         [{text:"🛒 BUY",callback_data:"buy"}],
@@ -107,14 +110,25 @@ UTR: ${msg.text}`,{
     });
   }
 
-  // STOCK ADD FIX
-  if(selectedPlan[id]){
-    let keys = msg.text.split("\n");
-    for(let k of keys){
-      if(k.trim()){
-        await Key.create({plan:selectedPlan[id],key:k.trim()});
+  if(waitingSS[id] && msg.photo){
+    bot.sendPhoto(ADMIN_ID,msg.photo.pop().file_id,{
+      caption:`USER:${id}\nPLAN:${userPlan[id].name}`,
+      reply_markup:{
+        inline_keyboard:[[
+          {text:"✅ VERIFY",callback_data:`approve_${id}`},
+          {text:"❌ REJECT",callback_data:`reject_${id}`}
+        ]]
       }
-    }
+    });
+
+    waitingSS[id]=false;
+    return bot.sendMessage(id,"⏳ WAIT ADMIN");
+  }
+
+  if(selectedPlan[id]){
+    msg.text.split("\n").forEach(async k=>{
+      if(k.trim()) await Key.create({plan:selectedPlan[id],key:k.trim()});
+    });
     selectedPlan[id]=null;
     return bot.sendMessage(id,"✅ STOCK ADDED\n"+await getStock());
   }
@@ -129,7 +143,6 @@ bot.on("callback_query", async q=>{
   let d=q.data,id=q.from.id;
   bot.answerCallbackQuery(q.id);
 
-  // BUY
   if(d==="buy"){
     return bot.sendMessage(id,"SELECT PLAN",{
       reply_markup:{
@@ -140,39 +153,43 @@ bot.on("callback_query", async q=>{
     });
   }
 
-  // PLAN SELECT
   if(d.startsWith("buy_")){
     let p=d.split("_")[1];
     userPlan[id]={...plans[p],id:p};
 
     let u=await User.findOne({id});
 
-    return bot.sendMessage(id,
-`💳 PAYMENT
+    return bot.sendPhoto(id,QR_LINK,{
+      caption:
+`💳 PAYMENT PANEL
 
-NAME: ${PAYMENT_NAME}
-UPI: ${UPI_ID}
+👤 ${PAYMENT_NAME}
 
-PRICE: ₹${plans[p].price}
-WALLET: ₹${u?.balance||0}`,{
+📲 UPI:
+\`${UPI_ID}\`
+
+💰 PRICE: ₹${plans[p].price}
+💸 WALLET: ₹${u?.balance||0}`,
+      parse_mode:"Markdown",
       reply_markup:{
         inline_keyboard:[
           [{text:"💸 USE WALLET",callback_data:"wallet"}],
+          [{text:"📸 SCREENSHOT",callback_data:"ss"}],
           [{text:"💳 ENTER UTR",callback_data:"utr"}]
         ]
       }
     });
   }
 
-  if(d==="wallet"){ useWallet[id]=true; return bot.sendMessage(id,"WALLET APPLIED"); }
+  if(d==="wallet"){ useWallet[id]=true; return bot.sendMessage(id,"WALLET ENABLED"); }
+  if(d==="ss"){ waitingSS[id]=true; return bot.sendMessage(id,"SEND SCREENSHOT"); }
   if(d==="utr"){ waitingUTR[id]=true; return bot.sendMessage(id,"ENTER UTR",{reply_markup:{force_reply:true}}); }
 
-  // APPROVE
   if(d.startsWith("approve_")){
     let uid=d.split("_")[1];
 
     let key=await Key.findOneAndDelete({plan:userPlan[uid].id});
-    if(!key) return bot.sendMessage(ADMIN_ID,"❌ NO STOCK");
+    if(!key) return bot.sendMessage(ADMIN_ID,"NO STOCK");
 
     let exp=new Date();
     exp.setDate(exp.getDate()+userPlan[uid].days);
@@ -187,7 +204,6 @@ WALLET: ₹${u?.balance||0}`,{
 
     await Sale.create({user:uid,key:key.key,plan:userPlan[uid].name,expiry:exp,utr:userUTR[uid],amount:price});
 
-    // referral
     if(u?.refBy){
       await User.updateOne({id:u.refBy},{
         $inc:{balance:userPlan[uid].ref,referrals:1}
@@ -197,131 +213,55 @@ WALLET: ₹${u?.balance||0}`,{
     bot.sendMessage(uid,
 `🔑 YOUR KEY
 
-${key.key}
+\`${key.key}\`
 
 🎮 LIMIT: 10-12
 LEGIT PLAY SAFE
 
 📅 EXPIRY:
-${exp.toLocaleString()}`);
+${exp.toLocaleString()}`,{parse_mode:"Markdown"});
 
-    bot.sendMessage(ADMIN_ID,
-`💰 SALE DONE
-
-USER: ${uid}
-PLAN: ${userPlan[uid].name}
-KEY: ${key.key}
-AMOUNT: ₹${price}`);
-
-    delete userPlan[uid];
-    delete userUTR[uid];
+    bot.sendMessage(ADMIN_ID,`SALE USER:${uid} ₹${price}`);
   }
 
-  // ACCOUNT
   if(d==="account"){
     let u=await User.findOne({id});
     let active=await Sale.findOne({user:id,expiry:{$gt:new Date()}});
     return bot.sendMessage(id,
 `👤 ACCOUNT
 
-${active?`🔑 ${active.key}\n📅 ${active.expiry}`:"NO ACTIVE PLAN"}
+${active?`🔑 ${active.key}\n📅 ${active.expiry}`:"NO ACTIVE"}
 
 💰 WALLET: ₹${u?.balance||0}
 👥 REF: ${u?.referrals||0}`);
   }
 
-  // REFER
   if(d==="refer"){
     return bot.sendMessage(id,
-`🎁 REFER LINK
+`🎁 REFER SYSTEM
 
-https://t.me/${BOT_USERNAME}?start=${id}`);
+https://t.me/${BOT_USERNAME}?start=${id}
+
+EARNING PLAN:
+1D ₹10
+7D ₹50
+15D ₹80
+30D ₹100
+60D ₹200`);
   }
 
-  // INFO
   if(d==="info"){
     return bot.sendMessage(id,
 `🔥 TRUSTED SELLER
-⚡ INSTANT DELIVERY
-🛡️ SAFE SYSTEM
-💯 REAL SERVICE`);
+⚡ FAST DELIVERY
+🛡️ SAFE SYSTEM`);
   }
 
-  // HELP
   if(d==="help"){
     return bot.sendMessage(id,
 `⚙️ HELP
 
-KEY ISSUE?
-PAYMENT ISSUE?
-
+KEY / PAYMENT ISSUE
 DM 👉 @GODx_COBRA`);
   }
-
-  // ADMIN
-  if(d==="addstock"){
-    if(id!==ADMIN_ID) return;
-    return bot.sendMessage(id,"SELECT PLAN",{
-      reply_markup:{
-        inline_keyboard:[
-          [{text:"1D",callback_data:"plan1"}],
-          [{text:"7D",callback_data:"plan2"}],
-          [{text:"15D",callback_data:"plan3"}],
-          [{text:"30D",callback_data:"plan4"}],
-          [{text:"60D",callback_data:"plan5"}]
-        ]
-      }
-    });
-  }
-
-  if(d.startsWith("plan")){
-    if(id!==ADMIN_ID) return;
-    selectedPlan[id]=d;
-    return bot.sendMessage(id,"SEND KEYS LINE BY LINE");
-  }
-
-  if(d==="stats"){
-    if(id!==ADMIN_ID) return;
-
-    let users=await User.countDocuments();
-    let sales=await Sale.countDocuments();
-    let stock=await getStock();
-
-    return bot.sendMessage(id,
-`📊 ADMIN PANEL
-
-👥 USERS: ${users}
-💰 SALES: ${sales}
-
-${stock}`);
-  }
-
-  if(d==="refstats"){
-    if(id!==ADMIN_ID) return;
-
-    let users=await User.find();
-    let txt="REF LIST:\n\n";
-    users.forEach(u=>{
-      if(u.referrals>0){
-        txt+=`ID:${u.id} | REF:${u.referrals} | ₹${u.balance}\n`;
-      }
-    });
-
-    return bot.sendMessage(id,txt);
-  }
-});
-
-// ===== ADMIN COMMAND =====
-bot.onText(/\/admin/,msg=>{
-  if(msg.from.id!==ADMIN_ID) return;
-
-  bot.sendMessage(msg.chat.id,"⚙️ ADMIN PANEL",{
-    reply_markup:{
-      inline_keyboard:[
-        [{text:"➕ ADD STOCK",callback_data:"addstock"}],
-        [{text:"📊 STATS",callback_data:"stats"}],
-        [{text:"🎁 REF USERS",callback_data:"refstats"}]
-      ]
-    }
-  });
 });
