@@ -37,7 +37,7 @@ const bot = new TelegramBot(token,{
 polling:true
 });
 
-// ================= COMMANDS =================
+// ================= COMMAND MENU =================
 
 bot.setMyCommands([
 
@@ -203,15 +203,13 @@ home(msg.chat.id);
 
 });
 
-// ================= MENU =================
+// ================= COMMANDS =================
 
 bot.onText(/\/menu/, async msg=>{
 
 showPlans(msg.chat.id);
 
 });
-
-// ================= ACCOUNT =================
 
 bot.onText(/\/myaccount/, async msg=>{
 
@@ -222,6 +220,35 @@ bot.sendMessage(msg.chat.id,
 🆔 ${msg.from.id}
 
 👤 ${msg.from.first_name}
+`
+);
+
+});
+
+bot.onText(/\/latestkey/, async msg=>{
+
+let last =
+await Sale.findOne({
+user:msg.chat.id
+}).sort({createdAt:-1});
+
+if(!last){
+
+return bot.sendMessage(msg.chat.id,
+"❌ 𝐍𝐎 𝐊𝐄𝐘 𝐅𝐎𝐔𝐍𝐃");
+}
+
+bot.sendMessage(msg.chat.id,
+`
+🔥 𝐋𝐀𝐓𝐄𝐒𝐓 𝐊𝐄𝐘
+
+━━━━━━━━━━━━━━━
+
+📦 ${last.plan}
+
+🔑 ${last.key}
+
+⏰ ${last.expiry.toLocaleString()}
 `
 );
 
@@ -259,33 +286,6 @@ bot.sendMessage(msg.chat.id,
 ━━━━━━━━━━━━━━━
 
 ⚡ 𝐂𝐎𝐁𝐑𝐀 𝐒𝐔𝐏𝐏𝐎𝐑𝐓
-`
-);
-
-});
-
-// ================= LATEST KEY =================
-
-bot.onText(/\/latestkey/, async msg=>{
-
-let last =
-await Sale.findOne({
-user:msg.chat.id
-}).sort({createdAt:-1});
-
-if(!last){
-
-return bot.sendMessage(msg.chat.id,
-"❌ 𝐍𝐎 𝐊𝐄𝐘 𝐅𝐎𝐔𝐍𝐃");
-}
-
-bot.sendMessage(msg.chat.id,
-`
-🔑 𝐘𝐎𝐔𝐑 𝐋𝐀𝐓𝐄𝐒𝐓 𝐊𝐄𝐘
-
-${last.key}
-
-⏰ ${last.expiry.toLocaleString()}
 `
 );
 
@@ -418,6 +418,10 @@ if(d==="help"){
 return bot.sendMessage(id,
 `
 ⚙️ 𝐂𝐎𝐁𝐑𝐀 𝐇𝐄𝐋𝐏 𝐂𝐄𝐍𝐓𝐄𝐑
+
+💳 PAYMENT ISSUE
+🔑 KEY ISSUE
+🛠 MOD ISSUE
 `
 );
 
@@ -500,17 +504,22 @@ return;
 
 }
 
-// ================= SEND SS =================
+// ================= SEND SCREENSHOT =================
 
 if(d==="ss"){
 
 waitingSS[id]=true;
 
-return bot.sendMessage(id,
+let x = await bot.sendMessage(id,
 `
-📸 𝐒𝐄𝐍𝐃 𝐏𝐀𝐘𝐌𝐄𝐍𝐓 𝐒𝐂𝐑𝐄𝐄𝐍𝐒𝐇𝐎𝐓
+📸 𝐒𝐄𝐍𝐃 𝐏𝐀𝐘𝐌𝐄𝐍𝐓
+𝐒𝐂𝐑𝐄𝐄𝐍𝐒𝐇𝐎𝐓
 `
 );
+
+userPlan[id].ssMsg = x.message_id;
+
+return;
 
 }
 
@@ -715,21 +724,39 @@ userPlan[id].qrMsg
 
 }
 
+if(userPlan[id]?.ssMsg){
+
+await bot.deleteMessage(
+id,
+userPlan[id].ssMsg
+);
+
+}
+
 }catch(e){}
 
-bot.sendPhoto(
+// SEND TO ADMIN
+await bot.sendPhoto(
 ADMIN_ID,
 msg.photo.pop().file_id,
 {
 caption:
 `
-💳 𝐏𝐀𝐘𝐌𝐄𝐍𝐓 𝐒𝐂𝐑𝐄𝐄𝐍𝐒𝐇𝐎𝐓
+💳 𝐍𝐄𝐖 𝐏𝐀𝐘𝐌𝐄𝐍𝐓
 
-👤 USER : ${id}
+━━━━━━━━━━━━━━━
 
-📦 PLAN : ${userPlan[id].name}
+👤 USER ID
 
-⏳ 𝐂𝐇𝐄𝐂𝐊𝐈𝐍𝐆 𝐏𝐀𝐘𝐌𝐄𝐍𝐓...
+${id}
+
+📦 PLAN
+
+${userPlan[id].name}
+
+━━━━━━━━━━━━━━━
+
+⚡ 𝐏𝐋𝐄𝐀𝐒𝐄 𝐕𝐄𝐑𝐈𝐅𝐘
 `,
 reply_markup:{
 inline_keyboard:[[
@@ -746,13 +773,46 @@ callback_data:`reject_${id}`
 }
 );
 
+// CLEAN PAGE
 return bot.sendMessage(id,
 `
+🛍 𝐂𝐎𝐁𝐑𝐀 𝐊𝐄𝐘 𝐒𝐇𝐎𝐏 🛍
+
+━━━━━━━━━━━━━━━
+
 ⏳ 𝐏𝐀𝐘𝐌𝐄𝐍𝐓 𝐔𝐍𝐃𝐄𝐑 𝐑𝐄𝐕𝐈𝐄𝐖
 
-⚡ 𝐏𝐋𝐄𝐀𝐒𝐄 𝐖𝐀𝐈𝐓 𝟏-𝟐 𝐌𝐈𝐍
-`
-);
+💳 𝐀𝐃𝐌𝐈𝐍 𝐈𝐒 𝐂𝐇𝐄𝐂𝐊𝐈𝐍𝐆
+𝐘𝐎𝐔𝐑 𝐏𝐀𝐘𝐌𝐄𝐍𝐓
+
+⚡ 𝐏𝐋𝐄𝐀𝐒𝐄 𝐖𝐀𝐈𝐓
+𝟒-𝟓 𝐌𝐈𝐍
+`,
+{
+reply_markup:{
+inline_keyboard:[
+
+[
+{
+text:"🛒 𝐂𝐎𝐁𝐑𝐀 𝐒𝐄𝐑𝐕𝐄𝐑",
+callback_data:"menu"
+}
+],
+
+[
+{
+text:"📜 𝐌𝐘 𝐎𝐑𝐃𝐄𝐑𝐒",
+callback_data:"orders"
+},
+{
+text:"⚙️ 𝐇𝐄𝐋𝐏",
+callback_data:"help"
+}
+]
+
+]
+}
+});
 
 }
 
