@@ -37,7 +37,32 @@ const bot = new TelegramBot(token,{
 polling:true
 });
 
-// ================= COMMAND MENU =================
+// ================= DATABASE =================
+
+mongoose.connect(MONGO_URL,{
+useNewUrlParser:true,
+useUnifiedTopology:true
+});
+
+// ================= MODELS =================
+
+const Key = mongoose.model("Key",{
+plan:String,
+key:String
+});
+
+const Sale = mongoose.model("Sale",{
+user:String,
+key:String,
+plan:String,
+expiry:Date,
+createdAt:{
+type:Date,
+default:Date.now
+}
+});
+
+// ================= COMMANDS =================
 
 bot.setMyCommands([
 
@@ -67,31 +92,6 @@ description:"⚙️ ADMIN PANEL"
 }
 
 ]);
-
-// ================= DATABASE =================
-
-mongoose.connect(MONGO_URL,{
-useNewUrlParser:true,
-useUnifiedTopology:true
-});
-
-// ================= MODELS =================
-
-const Key = mongoose.model("Key",{
-plan:String,
-key:String
-});
-
-const Sale = mongoose.model("Sale",{
-user:String,
-key:String,
-plan:String,
-expiry:Date,
-createdAt:{
-type:Date,
-default:Date.now
-}
-});
 
 // ================= PLANS =================
 
@@ -148,9 +148,39 @@ let waitingSS = {};
 let selectedPlan = {};
 let deleteMode = {};
 
+// ================= CLEAN CHAT =================
+
+async function cleanChat(id){
+
+try{
+
+if(!userPlan[id])
+return;
+
+let msgs = userPlan[id].messages || [];
+
+for(let m of msgs){
+
+try{
+await bot.deleteMessage(id,m);
+}catch(e){}
+
+}
+
+userPlan[id].messages = [];
+
+}catch(e){}
+
+}
+
 // ================= HOME =================
 
 async function home(id){
+
+if(!userPlan[id])
+userPlan[id]={};
+
+await cleanChat(id);
 
 let txt =
 `
@@ -167,7 +197,7 @@ let txt =
 ⚡ 𝐀𝐅𝐓𝐄𝐑 𝐕𝐄𝐑𝐈𝐅𝐘 𝐊𝐄𝐘 𝐃𝐄𝐋𝐈𝐕𝐄𝐑
 `;
 
-bot.sendMessage(id,txt,{
+let x = await bot.sendMessage(id,txt,{
 reply_markup:{
 inline_keyboard:[
 
@@ -193,6 +223,8 @@ callback_data:"help"
 }
 });
 
+userPlan[id].messages = [x.message_id];
+
 }
 
 // ================= START =================
@@ -213,9 +245,13 @@ showPlans(msg.chat.id);
 
 bot.onText(/\/myaccount/, async msg=>{
 
-bot.sendMessage(msg.chat.id,
+await cleanChat(msg.chat.id);
+
+let x = await bot.sendMessage(msg.chat.id,
 `
 👤 𝐌𝐘 𝐀𝐂𝐂𝐎𝐔𝐍𝐓
+
+━━━━━━━━━━━━━━━
 
 🆔 ${msg.from.id}
 
@@ -223,9 +259,13 @@ bot.sendMessage(msg.chat.id,
 `
 );
 
+userPlan[msg.chat.id].messages = [x.message_id];
+
 });
 
 bot.onText(/\/latestkey/, async msg=>{
+
+await cleanChat(msg.chat.id);
 
 let last =
 await Sale.findOne({
@@ -234,11 +274,15 @@ user:msg.chat.id
 
 if(!last){
 
-return bot.sendMessage(msg.chat.id,
+let x = await bot.sendMessage(msg.chat.id,
 "❌ 𝐍𝐎 𝐊𝐄𝐘 𝐅𝐎𝐔𝐍𝐃");
+
+userPlan[msg.chat.id].messages = [x.message_id];
+
+return;
 }
 
-bot.sendMessage(msg.chat.id,
+let x = await bot.sendMessage(msg.chat.id,
 `
 🔥 𝐋𝐀𝐓𝐄𝐒𝐓 𝐊𝐄𝐘
 
@@ -252,13 +296,15 @@ bot.sendMessage(msg.chat.id,
 `
 );
 
-});
+userPlan[msg.chat.id].messages = [x.message_id];
 
-// ================= HELP =================
+});
 
 bot.onText(/\/help/, async msg=>{
 
-bot.sendMessage(msg.chat.id,
+await cleanChat(msg.chat.id);
+
+let x = await bot.sendMessage(msg.chat.id,
 `
 ⚙️ 𝐂𝐎𝐁𝐑𝐀 𝐇𝐄𝐋𝐏 𝐂𝐄𝐍𝐓𝐄𝐑
 
@@ -285,15 +331,30 @@ bot.sendMessage(msg.chat.id,
 
 ━━━━━━━━━━━━━━━
 
-⚡ 𝐂𝐎𝐁𝐑𝐀 𝐒𝐔𝐏𝐏𝐎𝐑𝐓
-`
-);
+👤 𝐓𝐄𝐋𝐄𝐆𝐑𝐀𝐌 𝐒𝐔𝐏𝐏𝐎𝐑𝐓
+
+👉 @GODx_COBRA
+`,
+{
+reply_markup:{
+inline_keyboard:[[
+{
+text:"🏠 HOME",
+callback_data:"home"
+}
+]]
+}
+});
+
+userPlan[msg.chat.id].messages = [x.message_id];
 
 });
 
 // ================= SHOW PLANS =================
 
 async function showPlans(id){
+
+await cleanChat(id);
 
 let keyboard = [];
 
@@ -313,7 +374,7 @@ callback_data:`buy_${p}`
 
 }
 
-bot.sendMessage(id,
+let x = await bot.sendMessage(id,
 `
 🛒 𝐂𝐎𝐁𝐑𝐀 𝐒𝐄𝐑𝐕𝐄𝐑
 
@@ -325,11 +386,15 @@ inline_keyboard:keyboard
 }
 });
 
+userPlan[id].messages = [x.message_id];
+
 }
 
 // ================= SHOW ORDERS =================
 
 async function showOrders(id){
+
+await cleanChat(id);
 
 let orders =
 await Sale.find({user:id})
@@ -337,8 +402,12 @@ await Sale.find({user:id})
 
 if(!orders.length){
 
-return bot.sendMessage(id,
+let x = await bot.sendMessage(id,
 "❌ 𝐍𝐎 𝐎𝐑𝐃𝐄𝐑𝐒 𝐅𝐎𝐔𝐍𝐃");
+
+userPlan[id].messages = [x.message_id];
+
+return;
 }
 
 let latest = orders[0];
@@ -354,39 +423,20 @@ let txt =
 🔑 ${latest.key}
 
 ⏰ ${latest.expiry.toLocaleString()}
-
-━━━━━━━━━━━━━━━
 `;
 
-if(orders.length > 1){
-
-txt += `
-
-📜 𝐎𝐋𝐃 𝐎𝐑𝐃𝐄𝐑𝐒
-
-`;
-
-orders.slice(1,4).forEach((o,i)=>{
-
-txt += `
-${i+1}. ${o.plan}
-⏰ ${o.expiry.toLocaleString()}
-`;
-
-});
-
-}
-
-bot.sendMessage(id,txt,{
+let x = await bot.sendMessage(id,txt,{
 reply_markup:{
 inline_keyboard:[[
 {
-text:"📜 𝐌𝐎𝐑𝐄",
-callback_data:"more_orders"
+text:"🏠 HOME",
+callback_data:"home"
 }
 ]]
 }
 });
+
+userPlan[id].messages = [x.message_id];
 
 }
 
@@ -399,73 +449,70 @@ let id = q.from.id;
 
 bot.answerCallbackQuery(q.id);
 
-// ================= HOME =================
+// HOME
+if(d==="home"){
 
+return home(id);
+
+}
+
+// MENU
 if(d==="menu"){
 
 return showPlans(id);
 
 }
 
+// ORDERS
 if(d==="orders"){
 
 return showOrders(id);
 
 }
 
+// HELP
 if(d==="help"){
 
-return bot.sendMessage(id,
+await cleanChat(id);
+
+let x = await bot.sendMessage(id,
 `
 ⚙️ 𝐂𝐎𝐁𝐑𝐀 𝐇𝐄𝐋𝐏 𝐂𝐄𝐍𝐓𝐄𝐑
 
-💳 PAYMENT ISSUE
-🔑 KEY ISSUE
-🛠 MOD ISSUE
-`
-);
-
-}
-
-// ================= MORE ORDERS =================
-
-if(d==="more_orders"){
-
-let orders =
-await Sale.find({user:id})
-.sort({createdAt:-1})
-.limit(15);
-
-let txt =
-`📜 𝐅𝐔𝐋𝐋 𝐎𝐑𝐃𝐄𝐑 𝐇𝐈𝐒𝐓𝐎𝐑𝐘\n\n`;
-
-orders.forEach((o,i)=>{
-
-txt += `
-${i+1}. ${o.plan}
-
-🔑 ${o.key}
-
-⏰ ${o.expiry.toLocaleString()}
-
 ━━━━━━━━━━━━━━━
-`;
 
+👤 SUPPORT
+
+👉 @GODx_COBRA
+`,
+{
+reply_markup:{
+inline_keyboard:[[
+{
+text:"🏠 HOME",
+callback_data:"home"
+}
+]]
+}
 });
 
-return bot.sendMessage(id,txt);
+userPlan[id].messages = [x.message_id];
+
+return;
 
 }
 
-// ================= BUY =================
-
+// BUY
 if(d.startsWith("buy_")){
+
+await cleanChat(id);
 
 let p = d.split("_")[1];
 
 userPlan[id]={
 ...plans[p],
-id:p
+id:p,
+messages:[]
 };
 
 let qr = await bot.sendPhoto(id,QR_LINK,{
@@ -479,33 +526,32 @@ caption:
 
 ━━━━━━━━━━━━━━━
 
-💳 𝐔𝐏𝐈 𝐈𝐃
+💳 UPI ID
 
 \`${UPI_ID}\`
 
 ━━━━━━━━━━━━━━━
 
-📸 𝐒𝐄𝐍𝐃 𝐒𝐂𝐑𝐄𝐄𝐍𝐒𝐇𝐎𝐓
+📸 SEND SCREENSHOT
 `,
 parse_mode:"Markdown",
 reply_markup:{
 inline_keyboard:[[
 {
-text:"📸 𝐒𝐄𝐍𝐃 𝐒𝐂𝐑𝐄𝐄𝐍𝐒𝐇𝐎𝐓",
+text:"📸 SEND SCREENSHOT",
 callback_data:"ss"
 }
 ]]
 }
 });
 
-userPlan[id].qrMsg = qr.message_id;
+userPlan[id].messages = [qr.message_id];
 
 return;
 
 }
 
-// ================= SEND SCREENSHOT =================
-
+// SEND SS
 if(d==="ss"){
 
 waitingSS[id]=true;
@@ -517,14 +563,13 @@ let x = await bot.sendMessage(id,
 `
 );
 
-userPlan[id].ssMsg = x.message_id;
+userPlan[id].messages.push(x.message_id);
 
 return;
 
 }
 
-// ================= APPROVE =================
-
+// APPROVE
 if(d.startsWith("approve_")){
 
 let uid =
@@ -539,7 +584,7 @@ if(!key){
 
 return bot.sendMessage(
 ADMIN_ID,
-"❌ 𝐍𝐎 𝐒𝐓𝐎𝐂𝐊"
+"❌ NO STOCK"
 );
 }
 
@@ -569,19 +614,21 @@ plan:userPlan[uid].name,
 expiry:exp
 });
 
-bot.sendMessage(uid,
+await cleanChat(uid);
+
+let x = await bot.sendMessage(uid,
 `
 🔥 𝐂𝐎𝐁𝐑𝐀 𝐒𝐄𝐑𝐕𝐄𝐑 🔥
 
 ━━━━━━━━━━━━━━━
 
-🔑 𝐊𝐄𝐘
+🔑 KEY
 
 \`${key.key}\`
 
 ━━━━━━━━━━━━━━━
 
-⏰ 𝐄𝐗𝐏𝐈𝐑𝐄
+⏰ EXPIRE
 
 ${exp.toLocaleString()}
 `,
@@ -590,44 +637,57 @@ parse_mode:"Markdown",
 reply_markup:{
 inline_keyboard:[[
 {
-text:"📦 𝐉𝐎𝐈𝐍 𝐏𝐀𝐈𝐃 𝐆𝐑𝐎𝐔𝐏",
+text:"📦 JOIN PAID GROUP",
 url:CHANNEL_LINK
 }
 ]]
 }
 });
 
-delete userPlan[uid];
+userPlan[uid].messages = [x.message_id];
+
+delete waitingSS[uid];
 
 }
 
-// ================= REJECT =================
-
+// REJECT
 if(d.startsWith("reject_")){
 
 let uid =
 d.split("_")[1];
 
-bot.sendMessage(uid,
+await cleanChat(uid);
+
+let x = await bot.sendMessage(uid,
 `
 ❌ 𝐏𝐀𝐘𝐌𝐄𝐍𝐓 𝐑𝐄𝐉𝐄𝐂𝐓𝐄𝐃
 
-⚠️ 𝐏𝐋𝐄𝐀𝐒𝐄 𝐂𝐇𝐄𝐂𝐊 𝐏𝐀𝐘𝐌𝐄𝐍𝐓
-𝐀𝐍𝐃 𝐒𝐄𝐍𝐃 𝐀𝐆𝐀𝐈𝐍
-`
-);
+⚠️ PLEASE CHECK PAYMENT
+AND SEND AGAIN
+`,
+{
+reply_markup:{
+inline_keyboard:[[
+{
+text:"🏠 HOME",
+callback_data:"home"
+}
+]]
+}
+});
+
+userPlan[uid].messages = [x.message_id];
 
 }
 
-// ================= ADMIN =================
-
+// ADMIN
 if(d==="addstock"){
 
 if(id!==ADMIN_ID) return;
 
 return bot.sendMessage(id,
 `
-📦 𝐒𝐄𝐋𝐄𝐂𝐓 𝐏𝐋𝐀𝐍
+📦 SELECT PLAN
 `,
 {
 reply_markup:{
@@ -652,7 +712,7 @@ d.replace("plan_","");
 
 return bot.sendMessage(id,
 `
-🔑 𝐒𝐄𝐍𝐃 𝐊𝐄𝐘𝐒 𝐋𝐈𝐍𝐄 𝐁𝐘 𝐋𝐈𝐍𝐄
+🔑 SEND KEYS LINE BY LINE
 `
 );
 
@@ -666,7 +726,7 @@ deleteMode[id]=true;
 
 return bot.sendMessage(id,
 `
-🗑 𝐒𝐄𝐍𝐃 𝐊𝐄𝐘 𝐓𝐎 𝐃𝐄𝐋𝐄𝐓𝐄
+🗑 SEND KEY TO DELETE
 `
 );
 
@@ -684,7 +744,7 @@ await Sale.countDocuments();
 
 return bot.sendMessage(id,
 `
-📊 𝐀𝐃𝐌𝐈𝐍 𝐒𝐓𝐀𝐓𝐒
+📊 ADMIN STATS
 
 ━━━━━━━━━━━━━━━
 
@@ -698,13 +758,34 @@ return bot.sendMessage(id,
 
 });
 
-// ================= SCREENSHOT =================
+// ================= MESSAGE =================
 
 bot.on("message", async msg=>{
 
 let id = msg.chat.id;
 
-if(waitingSS[id] && msg.photo){
+// RANDOM MSG CLEAN
+if(
+msg.text &&
+!msg.text.startsWith("/") &&
+!selectedPlan[id] &&
+!deleteMode[id]
+){
+
+return home(id);
+
+}
+
+// PHOTO AUTO DETECT
+if(msg.photo){
+
+if(!waitingSS[id] && userPlan[id]){
+
+waitingSS[id]=true;
+
+}
+
+if(waitingSS[id]){
 
 waitingSS[id]=false;
 
@@ -715,27 +796,11 @@ id,
 msg.message_id
 );
 
-if(userPlan[id]?.qrMsg){
-
-await bot.deleteMessage(
-id,
-userPlan[id].qrMsg
-);
-
-}
-
-if(userPlan[id]?.ssMsg){
-
-await bot.deleteMessage(
-id,
-userPlan[id].ssMsg
-);
-
-}
-
 }catch(e){}
 
-// SEND TO ADMIN
+await cleanChat(id);
+
+// SEND ADMIN
 await bot.sendPhoto(
 ADMIN_ID,
 msg.photo.pop().file_id,
@@ -752,11 +817,11 @@ ${id}
 
 📦 PLAN
 
-${userPlan[id].name}
+${userPlan[id]?.name || "UNKNOWN"}
 
 ━━━━━━━━━━━━━━━
 
-⚡ 𝐏𝐋𝐄𝐀𝐒𝐄 𝐕𝐄𝐑𝐈𝐅𝐘
+⚡ PLEASE VERIFY
 `,
 reply_markup:{
 inline_keyboard:[[
@@ -773,20 +838,20 @@ callback_data:`reject_${id}`
 }
 );
 
-// CLEAN PAGE
-return bot.sendMessage(id,
+// USER PAGE
+let x = await bot.sendMessage(id,
 `
 🛍 𝐂𝐎𝐁𝐑𝐀 𝐊𝐄𝐘 𝐒𝐇𝐎𝐏 🛍
 
 ━━━━━━━━━━━━━━━
 
-⏳ 𝐏𝐀𝐘𝐌𝐄𝐍𝐓 𝐔𝐍𝐃𝐄𝐑 𝐑𝐄𝐕𝐈𝐄𝐖
+⏳ PAYMENT UNDER REVIEW
 
-💳 𝐀𝐃𝐌𝐈𝐍 𝐈𝐒 𝐂𝐇𝐄𝐂𝐊𝐈𝐍𝐆
-𝐘𝐎𝐔𝐑 𝐏𝐀𝐘𝐌𝐄𝐍𝐓
+💳 ADMIN IS CHECKING
+YOUR PAYMENT
 
-⚡ 𝐏𝐋𝐄𝐀𝐒𝐄 𝐖𝐀𝐈𝐓
-𝟒-𝟓 𝐌𝐈𝐍
+⚡ PLEASE WAIT
+4-5 MIN
 `,
 {
 reply_markup:{
@@ -794,18 +859,18 @@ inline_keyboard:[
 
 [
 {
-text:"🛒 𝐂𝐎𝐁𝐑𝐀 𝐒𝐄𝐑𝐕𝐄𝐑",
+text:"🛒 COBRA SERVER",
 callback_data:"menu"
 }
 ],
 
 [
 {
-text:"📜 𝐌𝐘 𝐎𝐑𝐃𝐄𝐑𝐒",
+text:"📜 MY ORDERS",
 callback_data:"orders"
 },
 {
-text:"⚙️ 𝐇𝐄𝐋𝐏",
+text:"⚙️ HELP",
 callback_data:"help"
 }
 ]
@@ -814,10 +879,15 @@ callback_data:"help"
 }
 });
 
+userPlan[id].messages = [x.message_id];
+
+return;
+
 }
 
-// ================= ADD STOCK =================
+}
 
+// ADD STOCK
 if(selectedPlan[id] && msg.text){
 
 for(let k of msg.text.split("\n")){
@@ -836,11 +906,10 @@ key:k.trim()
 selectedPlan[id]=null;
 
 return bot.sendMessage(id,
-"✅ 𝐒𝐓𝐎𝐂𝐊 𝐀𝐃𝐃𝐄𝐃");
+"✅ STOCK ADDED");
 }
 
-// ================= DELETE KEY =================
-
+// DELETE KEY
 if(deleteMode[id] && msg.text){
 
 await Key.deleteOne({
@@ -850,7 +919,7 @@ key:msg.text.trim()
 deleteMode[id]=false;
 
 return bot.sendMessage(id,
-"🗑 𝐊𝐄𝐘 𝐃𝐄𝐋𝐄𝐓𝐄𝐃");
+"🗑 KEY DELETED");
 }
 
 });
@@ -864,7 +933,7 @@ return;
 
 bot.sendMessage(msg.chat.id,
 `
-⚙️ 𝐂𝐎𝐁𝐑𝐀 𝐀𝐃𝐌𝐈𝐍 𝐏𝐀𝐍𝐄𝐋
+⚙️ COBRA ADMIN PANEL
 `,
 {
 reply_markup:{
@@ -872,21 +941,21 @@ inline_keyboard:[
 
 [
 {
-text:"➕ 𝐀𝐃𝐃 𝐒𝐓𝐎𝐂𝐊",
+text:"➕ ADD STOCK",
 callback_data:"addstock"
 }
 ],
 
 [
 {
-text:"🗑 𝐃𝐄𝐋𝐄𝐓𝐄 𝐊𝐄𝐘",
+text:"🗑 DELETE KEY",
 callback_data:"delkey"
 }
 ],
 
 [
 {
-text:"📊 𝐒𝐓𝐀𝐓𝐒",
+text:"📊 STATS",
 callback_data:"stats"
 }
 ]
