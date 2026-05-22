@@ -136,7 +136,15 @@ let txt =
 
 bot.sendMessage(id,txt,{
 reply_markup:{
-remove_keyboard:true
+keyboard:[
+["🛒 COBRA SERVER"],
+["📜 MY ORDERS"],
+["👤 ACCOUNT","📊 INFO"],
+["⚙️ HELP"]
+],
+resize_keyboard:true,
+persistent:true,
+one_time_keyboard:false
 }
 });
 
@@ -235,6 +243,70 @@ return bot.sendMessage(id,
 
 ✅ Payment already submitted
 ⏳ Waiting for admin approval`);
+}
+
+// ===== SHOP =====
+if(msg.text==="🛒 COBRA SERVER"){
+
+let keyboard = [];
+
+for(let p in plans){
+
+let stock = await Key.countDocuments({plan:p});
+
+keyboard.push([
+{
+text:`${plans[p].name}\n📦 STOCK: ${stock}`,
+callback_data:`buy_${p}`
+}
+]);
+
+}
+
+return bot.sendMessage(id,
+`🛒 𝐂𝐎𝐁𝐑𝐀 𝐒𝐄𝐑𝐕𝐄𝐑
+
+👇 TAP A PLAN TO PURCHASE`,
+{
+reply_markup:{
+inline_keyboard:keyboard
+}
+});
+
+}
+
+// ===== MY ORDERS =====
+if(msg.text==="📜 MY ORDERS"){
+
+let orders = await Sale.find({user:id})
+.sort({createdAt:-1})
+.limit(5);
+
+if(!orders.length){
+return bot.sendMessage(id,"❌ NO ORDERS");
+}
+
+let txt = `📜 YOUR ORDERS\n\n`;
+
+orders.forEach((o,i)=>{
+
+txt +=
+`${i+1}. ${o.plan}
+
+KEY:
+${o.key}
+
+EXPIRE:
+${o.expiry.toLocaleString()}
+
+━━━━━━━━━━━━━━━
+
+`;
+
+});
+
+return bot.sendMessage(id,txt);
+
 }
 
 // ===== ACCOUNT =====
