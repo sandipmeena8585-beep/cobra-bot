@@ -98,43 +98,43 @@ description:"⚙️ ADMIN PANEL"
 const plans = {
 
 plan1:{
-name:"𝐅𝐈𝐕𝐄 𝐇𝐎𝐔𝐑 - ₹40",
+name:"🕐 5HOUR - ₹40",
 hours:5,
 price:"40"
 },
 
 plan2:{
-name:"𝐎𝐍𝐄 𝐃𝐀𝐘 - ₹80",
+name:"📅 1DAY - ₹80",
 days:1,
 price:"80"
 },
 
 plan3:{
-name:"𝐓𝐇𝐑𝐄𝐄 𝐃𝐀𝐘 - ₹190",
+name:"📅 3DAY - ₹190",
 days:3,
 price:"190"
 },
 
 plan4:{
-name:"𝐒𝐄𝐕𝐄𝐍 𝐃𝐀𝐘 - ₹350",
+name:"📅 7DAY - ₹350",
 days:7,
 price:"350"
 },
 
 plan5:{
-name:"𝐅𝐈𝐅𝐓𝐄𝐄𝐍 𝐃𝐀𝐘 - ₹590",
+name:"📅 15DAY - ₹590",
 days:15,
 price:"590"
 },
 
 plan6:{
-name:"𝐓𝐇𝐈𝐑𝐓𝐘 𝐃𝐀𝐘 - ₹750",
+name:"📅 30DAY - ₹750",
 days:30,
 price:"750"
 },
 
 plan7:{
-name:"𝐒𝐈𝐗𝐓𝐘 𝐃𝐀𝐘 - ₹1150",
+name:"📅 60DAY - ₹1150",
 days:60,
 price:"1150"
 }
@@ -235,13 +235,15 @@ home(msg.chat.id);
 
 });
 
-// ================= COMMANDS =================
+// ================= MENU =================
 
 bot.onText(/\/menu/, async msg=>{
 
 showPlans(msg.chat.id);
 
 });
+
+// ================= ACCOUNT =================
 
 bot.onText(/\/myaccount/, async msg=>{
 
@@ -263,42 +265,7 @@ userPlan[msg.chat.id].messages = [x.message_id];
 
 });
 
-bot.onText(/\/latestkey/, async msg=>{
-
-await cleanChat(msg.chat.id);
-
-let last =
-await Sale.findOne({
-user:msg.chat.id
-}).sort({createdAt:-1});
-
-if(!last){
-
-let x = await bot.sendMessage(msg.chat.id,
-"❌ 𝐍𝐎 𝐊𝐄𝐘 𝐅𝐎𝐔𝐍𝐃");
-
-userPlan[msg.chat.id].messages = [x.message_id];
-
-return;
-}
-
-let x = await bot.sendMessage(msg.chat.id,
-`
-🔥 𝐋𝐀𝐓𝐄𝐒𝐓 𝐊𝐄𝐘
-
-━━━━━━━━━━━━━━━
-
-📦 ${last.plan}
-
-🔑 ${last.key}
-
-⏰ ${last.expiry.toLocaleString()}
-`
-);
-
-userPlan[msg.chat.id].messages = [x.message_id];
-
-});
+// ================= HELP =================
 
 bot.onText(/\/help/, async msg=>{
 
@@ -310,28 +277,28 @@ let x = await bot.sendMessage(msg.chat.id,
 
 ━━━━━━━━━━━━━━━
 
-💳 𝐏𝐀𝐘𝐌𝐄𝐍𝐓 𝐈𝐒𝐒𝐔𝐄
+💳 PAYMENT ISSUE
 • payment pending
 • wrong amount
 • screenshot failed
 
 ━━━━━━━━━━━━━━━
 
-🔑 𝐊𝐄𝐘 𝐈𝐒𝐒𝐔𝐄
+🔑 KEY ISSUE
 • key not working
 • expired key
 • invalid key
 
 ━━━━━━━━━━━━━━━
 
-🛠 𝐌𝐎𝐃 / 𝐒𝐄𝐓𝐔𝐏 𝐈𝐒𝐒𝐔𝐄
+🛠 MOD / SETUP ISSUE
 • setup problem
 • config issue
 • mod login problem
 
 ━━━━━━━━━━━━━━━
 
-👤 𝐓𝐄𝐋𝐄𝐆𝐑𝐀𝐌 𝐒𝐔𝐏𝐏𝐎𝐑𝐓
+👤 TELEGRAM SUPPORT
 
 👉 @GODx_COBRA
 `,
@@ -345,6 +312,45 @@ callback_data:"home"
 ]]
 }
 });
+
+userPlan[msg.chat.id].messages = [x.message_id];
+
+});
+
+// ================= LATEST KEY =================
+
+bot.onText(/\/latestkey/, async msg=>{
+
+await cleanChat(msg.chat.id);
+
+let last =
+await Sale.findOne({
+user:msg.chat.id
+}).sort({createdAt:-1});
+
+if(!last){
+
+let x = await bot.sendMessage(msg.chat.id,
+"❌ NO KEY FOUND");
+
+userPlan[msg.chat.id].messages = [x.message_id];
+
+return;
+}
+
+let x = await bot.sendMessage(msg.chat.id,
+`
+🔥 LATEST KEY
+
+━━━━━━━━━━━━━━━
+
+📦 ${last.plan}
+
+🔑 ${last.key}
+
+⏰ ${last.expiry.toLocaleString()}
+`
+);
 
 userPlan[msg.chat.id].messages = [x.message_id];
 
@@ -367,7 +373,7 @@ plan:p
 
 keyboard.push([
 {
-text:`🛒 ${plans[p].name} | 📦 ${stock}`,
+text:`${plans[p].name} | 📦 ${stock}`,
 callback_data:`buy_${p}`
 }
 ]);
@@ -378,7 +384,9 @@ let x = await bot.sendMessage(id,
 `
 🛒 𝐂𝐎𝐁𝐑𝐀 𝐒𝐄𝐑𝐕𝐄𝐑
 
-👇 𝐒𝐄𝐋𝐄𝐂𝐓 𝐏𝐋𝐀𝐍
+━━━━━━━━━━━━━━━
+
+⚡ SELECT YOUR PLAN
 `,
 {
 reply_markup:{
@@ -403,7 +411,7 @@ await Sale.find({user:id})
 if(!orders.length){
 
 let x = await bot.sendMessage(id,
-"❌ 𝐍𝐎 𝐎𝐑𝐃𝐄𝐑𝐒 𝐅𝐎𝐔𝐍𝐃");
+"❌ NO ORDERS FOUND");
 
 userPlan[id].messages = [x.message_id];
 
@@ -414,7 +422,7 @@ let latest = orders[0];
 
 let txt =
 `
-🔥 𝐌𝐘 𝐋𝐀𝐓𝐄𝐒𝐓 𝐊𝐄𝐘
+🔥 MY LATEST KEY
 
 ━━━━━━━━━━━━━━━
 
@@ -477,11 +485,7 @@ await cleanChat(id);
 
 let x = await bot.sendMessage(id,
 `
-⚙️ 𝐂𝐎𝐁𝐑𝐀 𝐇𝐄𝐋𝐏 𝐂𝐄𝐍𝐓𝐄𝐑
-
-━━━━━━━━━━━━━━━
-
-👤 SUPPORT
+⚙️ COBRA HELP CENTER
 
 👉 @GODx_COBRA
 `,
@@ -518,7 +522,7 @@ messages:[]
 let qr = await bot.sendPhoto(id,QR_LINK,{
 caption:
 `
-💳 𝐏𝐀𝐘𝐌𝐄𝐍𝐓 𝐏𝐀𝐆𝐄
+💳 PAYMENT PAGE
 
 📦 ${plans[p].name}
 
@@ -558,8 +562,7 @@ waitingSS[id]=true;
 
 let x = await bot.sendMessage(id,
 `
-📸 𝐒𝐄𝐍𝐃 𝐏𝐀𝐘𝐌𝐄𝐍𝐓
-𝐒𝐂𝐑𝐄𝐄𝐍𝐒𝐇𝐎𝐓
+📸 SEND PAYMENT SCREENSHOT
 `
 );
 
@@ -618,7 +621,7 @@ await cleanChat(uid);
 
 let x = await bot.sendMessage(uid,
 `
-🔥 𝐂𝐎𝐁𝐑𝐀 𝐒𝐄𝐑𝐕𝐄𝐑 🔥
+🔥 COBRA SERVER 🔥
 
 ━━━━━━━━━━━━━━━
 
@@ -660,9 +663,9 @@ await cleanChat(uid);
 
 let x = await bot.sendMessage(uid,
 `
-❌ 𝐏𝐀𝐘𝐌𝐄𝐍𝐓 𝐑𝐄𝐉𝐄𝐂𝐓𝐄𝐃
+❌ PAYMENT REJECTED
 
-⚠️ PLEASE CHECK PAYMENT
+⚠️ CHECK PAYMENT
 AND SEND AGAIN
 `,
 {
@@ -764,7 +767,7 @@ bot.on("message", async msg=>{
 
 let id = msg.chat.id;
 
-// RANDOM MSG CLEAN
+// RANDOM MSG
 if(
 msg.text &&
 !msg.text.startsWith("/") &&
@@ -807,7 +810,7 @@ msg.photo.pop().file_id,
 {
 caption:
 `
-💳 𝐍𝐄𝐖 𝐏𝐀𝐘𝐌𝐄𝐍𝐓
+💳 NEW PAYMENT
 
 ━━━━━━━━━━━━━━━
 
@@ -841,7 +844,7 @@ callback_data:`reject_${id}`
 // USER PAGE
 let x = await bot.sendMessage(id,
 `
-🛍 𝐂𝐎𝐁𝐑𝐀 𝐊𝐄𝐘 𝐒𝐇𝐎𝐏 🛍
+🛍 COBRA KEY SHOP 🛍
 
 ━━━━━━━━━━━━━━━
 
