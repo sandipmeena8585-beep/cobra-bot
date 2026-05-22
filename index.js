@@ -352,16 +352,31 @@ bot.on("message", async msg=>{
 
 let id = msg.chat.id;
 
+// ================= SCREENSHOT =================
+
 if(waitingSS[id] && msg.photo){
 
 waitingSS[id]=false;
 
 try{
+
 await bot.deleteMessage(
 id,
 msg.message_id
 );
+
+if(userPlan[id]?.qrMsg){
+
+await bot.deleteMessage(
+id,
+userPlan[id].qrMsg
+);
+
+}
+
 }catch(e){}
+
+lockedUser[id]=true;
 
 bot.sendPhoto(
 ADMIN_ID,
@@ -371,9 +386,21 @@ caption:
 `
 💳 𝐏𝐀𝐘𝐌𝐄𝐍𝐓 𝐒𝐂𝐑𝐄𝐄𝐍𝐒𝐇𝐎𝐓
 
-👤 ${id}
+━━━━━━━━━━━━━━━
 
-📦 ${userPlan[id].name}
+👤 𝐔𝐒𝐄𝐑 ID
+
+${id}
+
+📦 𝐏𝐋𝐀𝐍
+
+${userPlan[id].name}
+
+━━━━━━━━━━━━━━━
+
+⏳ 𝐂𝐇𝐄𝐂𝐊𝐈𝐍𝐆 𝐏𝐀𝐘𝐌𝐄𝐍𝐓...
+
+⚡ 𝐏𝐋𝐄𝐀𝐒𝐄 𝐖𝐀𝐈𝐓 𝟏-𝟐 𝐌𝐈𝐍
 `,
 reply_markup:{
 inline_keyboard:[[
@@ -394,7 +421,13 @@ return bot.sendMessage(id,
 `
 ⏳ 𝐏𝐀𝐘𝐌𝐄𝐍𝐓 𝐔𝐍𝐃𝐄𝐑 𝐑𝐄𝐕𝐈𝐄𝐖
 
+━━━━━━━━━━━━━━━
+
 📦 ${userPlan[id].name}
+
+💳 𝐀𝐃𝐌𝐈𝐍 𝐈𝐒 𝐂𝐇𝐄𝐂𝐊𝐈𝐍𝐆 𝐏𝐀𝐘𝐌𝐄𝐍𝐓
+
+⚡ 𝐏𝐋𝐄𝐀𝐒𝐄 𝐖𝐀𝐈𝐓 𝟏-𝟐 𝐌𝐈𝐍
 `
 );
 
@@ -448,7 +481,7 @@ userPlan[id]={
 id:p
 };
 
-return bot.sendPhoto(id,QR_LINK,{
+let qr = await bot.sendPhoto(id,QR_LINK,{
 caption:
 `
 💳 𝐏𝐀𝐘𝐌𝐄𝐍𝐓 𝐏𝐀𝐆𝐄
@@ -459,13 +492,13 @@ caption:
 
 ━━━━━━━━━━━━━━━
 
-💳 UPI ID
+💳 𝐔𝐏𝐈 𝐈𝐃
 
 \`${UPI_ID}\`
 
 ━━━━━━━━━━━━━━━
 
-📸 SEND SCREENSHOT
+📸 𝐒𝐄𝐍𝐃 𝐒𝐂𝐑𝐄𝐄𝐍𝐒𝐇𝐎𝐓
 `,
 parse_mode:"Markdown",
 reply_markup:{
@@ -478,6 +511,10 @@ callback_data:"ss"
 }
 });
 
+userPlan[id].qrMsg = qr.message_id;
+
+return;
+
 }
 
 // ================= SEND SS =================
@@ -487,7 +524,9 @@ if(d==="ss"){
 waitingSS[id]=true;
 
 return bot.sendMessage(id,
-"📸 𝐒𝐄𝐍𝐃 𝐏𝐀𝐘𝐌𝐄𝐍𝐓 𝐒𝐂𝐑𝐄𝐄𝐍𝐒𝐇𝐎𝐓"
+`
+📸 𝐒𝐄𝐍𝐃 𝐏𝐀𝐘𝐌𝐄𝐍𝐓 𝐒𝐂𝐑𝐄𝐄𝐍𝐒𝐇𝐎𝐓
+`
 );
 
 }
@@ -495,6 +534,14 @@ return bot.sendMessage(id,
 // ================= APPROVE =================
 
 if(d.startsWith("approve_")){
+
+await bot.editMessageReplyMarkup(
+{inline_keyboard:[]},
+{
+chat_id:q.message.chat.id,
+message_id:q.message.message_id
+}
+);
 
 let uid =
 d.split("_")[1];
@@ -544,15 +591,19 @@ bot.sendMessage(uid,
 
 ━━━━━━━━━━━━━━━
 
-🔑 KEY
+🔑 𝐊𝐄𝐘
 
 \`${key.key}\`
 
 ━━━━━━━━━━━━━━━
 
-⏰ EXPIRE
+⏰ 𝐄𝐗𝐏𝐈𝐑𝐄
 
 ${exp.toLocaleString()}
+
+━━━━━━━━━━━━━━━
+
+⚡ 𝐄𝐍𝐉𝐎𝐘
 `,
 {
 parse_mode:"Markdown",
@@ -566,11 +617,21 @@ url:CHANNEL_LINK
 }
 });
 
+delete userPlan[uid];
+
 }
 
 // ================= REJECT =================
 
 if(d.startsWith("reject_")){
+
+await bot.editMessageReplyMarkup(
+{inline_keyboard:[]},
+{
+chat_id:q.message.chat.id,
+message_id:q.message.message_id
+}
+);
 
 let uid =
 d.split("_")[1];
@@ -585,6 +646,128 @@ bot.sendMessage(uid,
 
 }
 
+// ================= ADMIN BUTTONS =================
+
+if(d==="addstock"){
+
+if(id!==ADMIN_ID) return;
+
+return bot.sendMessage(id,
+`
+📦 𝐒𝐄𝐋𝐄𝐂𝐓 𝐏𝐋𝐀𝐍
+`,
+{
+reply_markup:{
+inline_keyboard:
+Object.keys(plans).map(p=>[
+{
+text:plans[p].name,
+callback_data:`plan_${p}`
+}
+])
+}
+});
+
+}
+
+if(d.startsWith("plan_")){
+
+if(id!==ADMIN_ID) return;
+
+selectedPlan[id]=
+d.replace("plan_","");
+
+return bot.sendMessage(id,
+`
+🔑 𝐒𝐄𝐍𝐃 𝐊𝐄𝐘𝐒 𝐋𝐈𝐍𝐄 𝐁𝐘 𝐋𝐈𝐍𝐄
+`
+);
+
+}
+
+if(d==="delkey"){
+
+if(id!==ADMIN_ID) return;
+
+deleteMode[id]=true;
+
+return bot.sendMessage(id,
+`
+🗑 𝐒𝐄𝐍𝐃 𝐊𝐄𝐘 𝐓𝐎 𝐃𝐄𝐋𝐄𝐓𝐄
+`
+);
+
+}
+
+if(d==="stats"){
+
+if(id!==ADMIN_ID) return;
+
+let stock =
+await Key.countDocuments();
+
+let sold =
+await Sale.countDocuments();
+
+return bot.sendMessage(id,
+`
+📊 𝐀𝐃𝐌𝐈𝐍 𝐒𝐓𝐀𝐓𝐒
+
+━━━━━━━━━━━━━━━
+
+📦 STOCK
+
+${stock}
+
+🔥 SOLD
+
+${sold}
+`
+);
+
+}
+
+});
+
+// ================= ADD STOCK =================
+
+bot.on("message", async msg=>{
+
+let id = msg.chat.id;
+
+if(selectedPlan[id] && msg.text){
+
+for(let k of msg.text.split("\n")){
+
+if(k.trim()){
+
+await Key.create({
+plan:selectedPlan[id],
+key:k.trim()
+});
+
+}
+
+}
+
+selectedPlan[id]=null;
+
+return bot.sendMessage(id,
+"✅ 𝐒𝐓𝐎𝐂𝐊 𝐀𝐃𝐃𝐄𝐃");
+}
+
+if(deleteMode[id] && msg.text){
+
+await Key.deleteOne({
+key:msg.text.trim()
+});
+
+deleteMode[id]=false;
+
+return bot.sendMessage(id,
+"🗑 𝐊𝐄𝐘 𝐃𝐄𝐋𝐄𝐓𝐄𝐃");
+}
+
 });
 
 // ================= ADMIN PANEL =================
@@ -596,9 +779,36 @@ return;
 
 bot.sendMessage(msg.chat.id,
 `
-⚙️ 𝐀𝐃𝐌𝐈𝐍 𝐏𝐀𝐍𝐄𝐋
-`
-);
+⚙️ 𝐂𝐎𝐁𝐑𝐀 𝐀𝐃𝐌𝐈𝐍 𝐏𝐀𝐍𝐄𝐋
+`,
+{
+reply_markup:{
+inline_keyboard:[
+
+[
+{
+text:"➕ 𝐀𝐃𝐃 𝐒𝐓𝐎𝐂𝐊",
+callback_data:"addstock"
+}
+],
+
+[
+{
+text:"🗑 𝐃𝐄𝐋𝐄𝐓𝐄 𝐊𝐄𝐘",
+callback_data:"delkey"
+}
+],
+
+[
+{
+text:"📊 𝐒𝐓𝐀𝐓𝐒",
+callback_data:"stats"
+}
+]
+
+]
+}
+});
 
 });
 
