@@ -9,6 +9,7 @@ const ADMIN_ID = 7707237527;
 const MONGO_URL = "mongodb+srv://COBRA:Cobra%4012345@cluster0.uqwcyny.mongodb.net/cobra?retryWrites=true&w=majority";
 
 const CHANNEL_LINK = "https://t.me/+wRZN39fdVcRkYTM9";
+
 const UPI_ID = "godxcobra@axl";
 
 const QR_LINK = "https://images.weserv.nl/?url=raw.githubusercontent.com/sandipmeena8585-beep/cobra-bot/main/upi_qr.png";
@@ -16,8 +17,8 @@ const QR_LINK = "https://images.weserv.nl/?url=raw.githubusercontent.com/sandipm
 // ===== SERVER =====
 const app = express();
 
-app.get("/", (req,res)=>{
-  res.send("COBRA BOT RUNNING");
+app.get("/",(req,res)=>{
+res.send("COBRA BOT RUNNING");
 });
 
 app.listen(process.env.PORT || 3000);
@@ -25,38 +26,89 @@ app.listen(process.env.PORT || 3000);
 // ===== BOT =====
 const bot = new TelegramBot(token,{polling:true});
 
+// ===== COMMAND MENU =====
+bot.setMyCommands([
+{
+command:"start",
+description:"🏠 Main Menu"
+},
+{
+command:"menu",
+description:"🛍 Shop Menu"
+},
+{
+command:"history",
+description:"📜 My Orders"
+},
+{
+command:"admin",
+description:"⚙️ Admin Panel"
+}
+]);
+
 // ===== DATABASE =====
 mongoose.connect(MONGO_URL);
 
 // ===== MODELS =====
 const Key = mongoose.model("Key",{
-  plan:String,
-  key:String
+plan:String,
+key:String
 });
 
 const Sale = mongoose.model("Sale",{
-  user:String,
-  key:String,
-  plan:String,
-  expiry:Date,
-  createdAt:{
-    type:Date,
-    default:Date.now
-  }
+user:String,
+key:String,
+plan:String,
+expiry:Date,
+createdAt:{
+type:Date,
+default:Date.now
+}
 });
 
 const User = mongoose.model("User",{
-  id:Number
+id:Number
 });
 
 // ===== PLANS =====
 const plans = {
-  plan1:{name:"⏱ 1 DAY — ₹100",days:1,price:"100"},
-  plan2:{name:"⏱ 3 DAY — ₹200",days:3,price:"200"},
-  plan3:{name:"⏱ 7 DAY — ₹400",days:7,price:"400"},
-  plan4:{name:"⏱ 15 DAY — ₹600",days:15,price:"600"},
-  plan5:{name:"⏱ 30 DAY — ₹800",days:30,price:"800"},
-  plan6:{name:"⏱ 60 DAY — ₹1200",days:60,price:"1200"}
+
+plan1:{
+name:"⏱ 1 DAY — ₹100",
+days:1,
+price:"100"
+},
+
+plan2:{
+name:"⏱ 3 DAY — ₹200",
+days:3,
+price:"200"
+},
+
+plan3:{
+name:"⏱ 7 DAY — ₹400",
+days:7,
+price:"400"
+},
+
+plan4:{
+name:"⏱ 15 DAY — ₹600",
+days:15,
+price:"600"
+},
+
+plan5:{
+name:"⏱ 30 DAY — ₹800",
+days:30,
+price:"800"
+},
+
+plan6:{
+name:"⏱ 60 DAY — ₹1200",
+days:60,
+price:"1200"
+}
+
 };
 
 // ===== STATE =====
@@ -112,14 +164,75 @@ home(msg.from.id);
 
 });
 
-// ===== /SAMI =====
-bot.onText(/\/sami/,async msg=>{
+// ===== MENU =====
+bot.onText(/\/menu/,async msg=>{
 
-home(msg.chat.id);
+let id = msg.chat.id;
+
+let keyboard = [];
+
+for(let p in plans){
+
+let stock = await Key.countDocuments({plan:p});
+
+keyboard.push([
+{
+text:`${plans[p].name}\n📦 STOCK: ${stock}`,
+callback_data:`buy_${p}`
+}
+]);
+
+}
+
+bot.sendMessage(id,
+`🛒 𝐂𝐎𝐁𝐑𝐀 𝐒𝐄𝐑𝐕𝐄𝐑
+
+👇 TAP A PLAN TO PURCHASE`,
+{
+reply_markup:{
+inline_keyboard:keyboard
+}
+});
 
 });
 
-// ===== MENU BUTTONS =====
+// ===== HISTORY =====
+bot.onText(/\/history/,async msg=>{
+
+let id = msg.chat.id;
+
+let orders = await Sale.find({user:id})
+.sort({createdAt:-1})
+.limit(5);
+
+if(!orders.length){
+return bot.sendMessage(id,"❌ NO ORDERS");
+}
+
+let txt = `📜 YOUR ORDERS\n\n`;
+
+orders.forEach((o,i)=>{
+
+txt +=
+`${i+1}. ${o.plan}
+
+KEY:
+${o.key}
+
+EXPIRE:
+${o.expiry.toLocaleString()}
+
+━━━━━━━━━━━━━━━
+
+`;
+
+});
+
+bot.sendMessage(id,txt);
+
+});
+
+// ===== MESSAGE =====
 bot.on("message",async msg=>{
 
 let id = msg.from.id;
@@ -177,6 +290,7 @@ return bot.sendMessage(id,"❌ NO ORDERS");
 let txt = `📜 YOUR ORDERS\n\n`;
 
 orders.forEach((o,i)=>{
+
 txt +=
 `${i+1}. ${o.plan}
 
@@ -189,6 +303,7 @@ ${o.expiry.toLocaleString()}
 ━━━━━━━━━━━━━━━
 
 `;
+
 });
 
 return bot.sendMessage(id,txt);
@@ -329,7 +444,8 @@ ${userPlan[id].name}
 ━━━━━━━━━━━━━━━
 
 UTR:
-${msg.text}`,{
+${msg.text}`,
+{
 reply_markup:{
 inline_keyboard:[[
 {
@@ -574,7 +690,8 @@ if(d==="addstock"){
 if(id!==ADMIN_ID) return;
 
 return bot.sendMessage(id,
-`SELECT PLAN`,{
+`SELECT PLAN`,
+{
 reply_markup:{
 inline_keyboard:
 Object.keys(plans).map(p=>[
@@ -673,7 +790,8 @@ if(msg.from.id!==ADMIN_ID)
 return;
 
 bot.sendMessage(msg.chat.id,
-`⚙️ ADMIN PANEL`,{
+`⚙️ ADMIN PANEL`,
+{
 reply_markup:{
 inline_keyboard:[
 [
