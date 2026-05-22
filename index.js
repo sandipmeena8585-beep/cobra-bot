@@ -37,33 +37,33 @@ const bot = new TelegramBot(token,{
 polling:true
 });
 
-// ================= COMMAND MENU =================
+// ================= COMMANDS =================
 
 bot.setMyCommands([
 
 {
 command:"menu",
-description:"🛒 𝐂𝐎𝐁𝐑𝐀 𝐒𝐄𝐑𝐕𝐄𝐑"
+description:"🛒 COBRA SERVER"
 },
 
 {
 command:"myaccount",
-description:"👤 𝐌𝐘 𝐀𝐂𝐂𝐎𝐔𝐍𝐓"
+description:"👤 MY ACCOUNT"
 },
 
 {
 command:"help",
-description:"⚙️ 𝐇𝐄𝐋𝐏 𝐂𝐄𝐍𝐓𝐄𝐑"
+description:"⚙️ HELP CENTER"
 },
 
 {
 command:"latestkey",
-description:"🔑 𝐌𝐘 𝐋𝐀𝐓𝐄𝐒𝐓 𝐊𝐄𝐘"
+description:"🔑 MY LATEST KEY"
 },
 
 {
 command:"sami",
-description:"⚙️ 𝐀𝐃𝐌𝐈𝐍 𝐏𝐀𝐍𝐄𝐋"
+description:"⚙️ ADMIN PANEL"
 }
 
 ]);
@@ -73,12 +73,6 @@ description:"⚙️ 𝐀𝐃𝐌𝐈𝐍 𝐏𝐀𝐍𝐄𝐋"
 mongoose.connect(MONGO_URL,{
 useNewUrlParser:true,
 useUnifiedTopology:true
-})
-.then(()=>{
-console.log("🟢 MONGODB CONNECTED");
-})
-.catch(err=>{
-console.log("❌ MONGO ERROR",err);
 });
 
 // ================= MODELS =================
@@ -153,7 +147,6 @@ let userPlan = {};
 let waitingSS = {};
 let selectedPlan = {};
 let deleteMode = {};
-let lockedUser = {};
 
 // ================= HOME =================
 
@@ -210,13 +203,15 @@ home(msg.chat.id);
 
 });
 
-// ================= COMMANDS =================
+// ================= MENU =================
 
 bot.onText(/\/menu/, async msg=>{
 
 showPlans(msg.chat.id);
 
 });
+
+// ================= ACCOUNT =================
 
 bot.onText(/\/myaccount/, async msg=>{
 
@@ -232,21 +227,44 @@ bot.sendMessage(msg.chat.id,
 
 });
 
+// ================= HELP =================
+
 bot.onText(/\/help/, async msg=>{
 
 bot.sendMessage(msg.chat.id,
 `
-⚙️ 𝐇𝐄𝐋𝐏 𝐂𝐄𝐍𝐓𝐄𝐑
+⚙️ 𝐂𝐎𝐁𝐑𝐀 𝐇𝐄𝐋𝐏 𝐂𝐄𝐍𝐓𝐄𝐑
 
 ━━━━━━━━━━━━━━━
 
-👤 𝐎𝐖𝐍𝐄𝐑
+💳 𝐏𝐀𝐘𝐌𝐄𝐍𝐓 𝐈𝐒𝐒𝐔𝐄
+• payment pending
+• wrong amount
+• screenshot failed
 
-👉 @GODx_COBRA
+━━━━━━━━━━━━━━━
+
+🔑 𝐊𝐄𝐘 𝐈𝐒𝐒𝐔𝐄
+• key not working
+• expired key
+• invalid key
+
+━━━━━━━━━━━━━━━
+
+🛠 𝐌𝐎𝐃 / 𝐒𝐄𝐓𝐔𝐏 𝐈𝐒𝐒𝐔𝐄
+• setup problem
+• config issue
+• mod login problem
+
+━━━━━━━━━━━━━━━
+
+⚡ 𝐂𝐎𝐁𝐑𝐀 𝐒𝐔𝐏𝐏𝐎𝐑𝐓
 `
 );
 
 });
+
+// ================= LATEST KEY =================
 
 bot.onText(/\/latestkey/, async msg=>{
 
@@ -315,125 +333,62 @@ async function showOrders(id){
 
 let orders =
 await Sale.find({user:id})
-.sort({createdAt:-1})
-.limit(5);
+.sort({createdAt:-1});
 
 if(!orders.length){
 
 return bot.sendMessage(id,
-"❌ 𝐍𝐎 𝐎𝐑𝐃𝐄𝐑𝐒");
+"❌ 𝐍𝐎 𝐎𝐑𝐃𝐄𝐑𝐒 𝐅𝐎𝐔𝐍𝐃");
 }
 
+let latest = orders[0];
+
 let txt =
-`📜 𝐘𝐎𝐔𝐑 𝐎𝐑𝐃𝐄𝐑𝐒\n\n`;
-
-orders.forEach((o,i)=>{
-
-txt +=
 `
-${i+1}. ${o.plan}
+🔥 𝐌𝐘 𝐋𝐀𝐓𝐄𝐒𝐓 𝐊𝐄𝐘
 
-🔑 ${o.key}
+━━━━━━━━━━━━━━━
 
-⏰ ${o.expiry.toLocaleString()}
+📦 ${latest.plan}
+
+🔑 ${latest.key}
+
+⏰ ${latest.expiry.toLocaleString()}
 
 ━━━━━━━━━━━━━━━
 `;
 
+if(orders.length > 1){
+
+txt += `
+
+📜 𝐎𝐋𝐃 𝐎𝐑𝐃𝐄𝐑𝐒
+
+`;
+
+orders.slice(1,4).forEach((o,i)=>{
+
+txt += `
+${i+1}. ${o.plan}
+⏰ ${o.expiry.toLocaleString()}
+`;
+
 });
 
-bot.sendMessage(id,txt);
-
 }
 
-// ================= MESSAGE =================
-
-bot.on("message", async msg=>{
-
-let id = msg.chat.id;
-
-// ================= SCREENSHOT =================
-
-if(waitingSS[id] && msg.photo){
-
-waitingSS[id]=false;
-
-try{
-
-await bot.deleteMessage(
-id,
-msg.message_id
-);
-
-if(userPlan[id]?.qrMsg){
-
-await bot.deleteMessage(
-id,
-userPlan[id].qrMsg
-);
-
-}
-
-}catch(e){}
-
-lockedUser[id]=true;
-
-bot.sendPhoto(
-ADMIN_ID,
-msg.photo.pop().file_id,
-{
-caption:
-`
-💳 𝐏𝐀𝐘𝐌𝐄𝐍𝐓 𝐒𝐂𝐑𝐄𝐄𝐍𝐒𝐇𝐎𝐓
-
-━━━━━━━━━━━━━━━
-
-👤 𝐔𝐒𝐄𝐑 ID
-
-${id}
-
-📦 𝐏𝐋𝐀𝐍
-
-${userPlan[id].name}
-
-━━━━━━━━━━━━━━━
-
-⏳ 𝐂𝐇𝐄𝐂𝐊𝐈𝐍𝐆 𝐏𝐀𝐘𝐌𝐄𝐍𝐓...
-
-⚡ 𝐏𝐋𝐄𝐀𝐒𝐄 𝐖𝐀𝐈𝐓 𝟏-𝟐 𝐌𝐈𝐍
-`,
+bot.sendMessage(id,txt,{
 reply_markup:{
 inline_keyboard:[[
 {
-text:"✅ 𝐕𝐄𝐑𝐈𝐅𝐘",
-callback_data:`approve_${id}`
-},
-{
-text:"❌ 𝐑𝐄𝐉𝐄𝐂𝐓",
-callback_data:`reject_${id}`
+text:"📜 𝐌𝐎𝐑𝐄",
+callback_data:"more_orders"
 }
 ]]
 }
-}
-);
-
-return bot.sendMessage(id,
-`
-⏳ 𝐏𝐀𝐘𝐌𝐄𝐍𝐓 𝐔𝐍𝐃𝐄𝐑 𝐑𝐄𝐕𝐈𝐄𝐖
-
-━━━━━━━━━━━━━━━
-
-📦 ${userPlan[id].name}
-
-💳 𝐀𝐃𝐌𝐈𝐍 𝐈𝐒 𝐂𝐇𝐄𝐂𝐊𝐈𝐍𝐆 𝐏𝐀𝐘𝐌𝐄𝐍𝐓
-
-⚡ 𝐏𝐋𝐄𝐀𝐒𝐄 𝐖𝐀𝐈𝐓 𝟏-𝟐 𝐌𝐈𝐍
-`
-);
-
-}
-
 });
+
+}
 
 // ================= CALLBACK =================
 
@@ -444,7 +399,7 @@ let id = q.from.id;
 
 bot.answerCallbackQuery(q.id);
 
-// ================= HOME BUTTONS =================
+// ================= HOME =================
 
 if(d==="menu"){
 
@@ -462,11 +417,39 @@ if(d==="help"){
 
 return bot.sendMessage(id,
 `
-⚙️ 𝐇𝐄𝐋𝐏 𝐂𝐄𝐍𝐓𝐄𝐑
-
-👉 @GODx_COBRA
+⚙️ 𝐂𝐎𝐁𝐑𝐀 𝐇𝐄𝐋𝐏 𝐂𝐄𝐍𝐓𝐄𝐑
 `
 );
+
+}
+
+// ================= MORE ORDERS =================
+
+if(d==="more_orders"){
+
+let orders =
+await Sale.find({user:id})
+.sort({createdAt:-1})
+.limit(15);
+
+let txt =
+`📜 𝐅𝐔𝐋𝐋 𝐎𝐑𝐃𝐄𝐑 𝐇𝐈𝐒𝐓𝐎𝐑𝐘\n\n`;
+
+orders.forEach((o,i)=>{
+
+txt += `
+${i+1}. ${o.plan}
+
+🔑 ${o.key}
+
+⏰ ${o.expiry.toLocaleString()}
+
+━━━━━━━━━━━━━━━
+`;
+
+});
+
+return bot.sendMessage(id,txt);
 
 }
 
@@ -535,14 +518,6 @@ return bot.sendMessage(id,
 
 if(d.startsWith("approve_")){
 
-await bot.editMessageReplyMarkup(
-{inline_keyboard:[]},
-{
-chat_id:q.message.chat.id,
-message_id:q.message.message_id
-}
-);
-
 let uid =
 d.split("_")[1];
 
@@ -600,10 +575,6 @@ bot.sendMessage(uid,
 ⏰ 𝐄𝐗𝐏𝐈𝐑𝐄
 
 ${exp.toLocaleString()}
-
-━━━━━━━━━━━━━━━
-
-⚡ 𝐄𝐍𝐉𝐎𝐘
 `,
 {
 parse_mode:"Markdown",
@@ -625,14 +596,6 @@ delete userPlan[uid];
 
 if(d.startsWith("reject_")){
 
-await bot.editMessageReplyMarkup(
-{inline_keyboard:[]},
-{
-chat_id:q.message.chat.id,
-message_id:q.message.message_id
-}
-);
-
 let uid =
 d.split("_")[1];
 
@@ -640,13 +603,14 @@ bot.sendMessage(uid,
 `
 ❌ 𝐏𝐀𝐘𝐌𝐄𝐍𝐓 𝐑𝐄𝐉𝐄𝐂𝐓𝐄𝐃
 
-👉 @GODx_COBRA
+⚠️ 𝐏𝐋𝐄𝐀𝐒𝐄 𝐂𝐇𝐄𝐂𝐊 𝐏𝐀𝐘𝐌𝐄𝐍𝐓
+𝐀𝐍𝐃 𝐒𝐄𝐍𝐃 𝐀𝐆𝐀𝐈𝐍
 `
 );
 
 }
 
-// ================= ADMIN BUTTONS =================
+// ================= ADMIN =================
 
 if(d==="addstock"){
 
@@ -715,13 +679,9 @@ return bot.sendMessage(id,
 
 ━━━━━━━━━━━━━━━
 
-📦 STOCK
+📦 STOCK : ${stock}
 
-${stock}
-
-🔥 SOLD
-
-${sold}
+🔥 SOLD : ${sold}
 `
 );
 
@@ -729,11 +689,74 @@ ${sold}
 
 });
 
-// ================= ADD STOCK =================
+// ================= SCREENSHOT =================
 
 bot.on("message", async msg=>{
 
 let id = msg.chat.id;
+
+if(waitingSS[id] && msg.photo){
+
+waitingSS[id]=false;
+
+try{
+
+await bot.deleteMessage(
+id,
+msg.message_id
+);
+
+if(userPlan[id]?.qrMsg){
+
+await bot.deleteMessage(
+id,
+userPlan[id].qrMsg
+);
+
+}
+
+}catch(e){}
+
+bot.sendPhoto(
+ADMIN_ID,
+msg.photo.pop().file_id,
+{
+caption:
+`
+💳 𝐏𝐀𝐘𝐌𝐄𝐍𝐓 𝐒𝐂𝐑𝐄𝐄𝐍𝐒𝐇𝐎𝐓
+
+👤 USER : ${id}
+
+📦 PLAN : ${userPlan[id].name}
+
+⏳ 𝐂𝐇𝐄𝐂𝐊𝐈𝐍𝐆 𝐏𝐀𝐘𝐌𝐄𝐍𝐓...
+`,
+reply_markup:{
+inline_keyboard:[[
+{
+text:"✅ VERIFY",
+callback_data:`approve_${id}`
+},
+{
+text:"❌ REJECT",
+callback_data:`reject_${id}`
+}
+]]
+}
+}
+);
+
+return bot.sendMessage(id,
+`
+⏳ 𝐏𝐀𝐘𝐌𝐄𝐍𝐓 𝐔𝐍𝐃𝐄𝐑 𝐑𝐄𝐕𝐈𝐄𝐖
+
+⚡ 𝐏𝐋𝐄𝐀𝐒𝐄 𝐖𝐀𝐈𝐓 𝟏-𝟐 𝐌𝐈𝐍
+`
+);
+
+}
+
+// ================= ADD STOCK =================
 
 if(selectedPlan[id] && msg.text){
 
@@ -755,6 +778,8 @@ selectedPlan[id]=null;
 return bot.sendMessage(id,
 "✅ 𝐒𝐓𝐎𝐂𝐊 𝐀𝐃𝐃𝐄𝐃");
 }
+
+// ================= DELETE KEY =================
 
 if(deleteMode[id] && msg.text){
 
