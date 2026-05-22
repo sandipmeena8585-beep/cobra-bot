@@ -62,33 +62,33 @@ default:Date.now
 }
 });
 
-// ================= COMMAND MENU =================
+// ================= COMMANDS =================
 
 bot.setMyCommands([
 
 {
 command:"menu",
-description:"COBRA SERVER"
+description:"🛒 COBRA SERVER"
 },
 
 {
 command:"myaccount",
-description:"MY ACCOUNT"
+description:"👤 MY ACCOUNT"
 },
 
 {
 command:"help",
-description:"HELP CENTER"
+description:"⚙️ HELP CENTER"
 },
 
 {
 command:"latestkey",
-description:"MY LATEST KEY"
+description:"🔑 MY LATEST KEY"
 },
 
 {
 command:"sami",
-description:"ADMIN PANEL"
+description:"⚙️ ADMIN PANEL"
 }
 
 ]);
@@ -205,14 +205,27 @@ let txt =
 
 let x = await bot.sendMessage(id,txt,{
 reply_markup:{
-keyboard:[
-["🛒 𝐂𝐎𝐁𝐑𝐀 𝐒𝐄𝐑𝐕𝐄𝐑"],
-["📜 𝐌𝐘 𝐎𝐑𝐃𝐄𝐑𝐒","⚙️ 𝐇𝐄𝐋𝐏"]
+inline_keyboard:[
+
+[
+{
+text:"🛒 𝐂𝐎𝐁𝐑𝐀 𝐒𝐄𝐑𝐕𝐄𝐑",
+callback_data:"menu"
+}
 ],
-resize_keyboard:true,
-persistent:true,
-one_time_keyboard:false,
-input_field_placeholder:"𝐂𝐎𝐁𝐑𝐀 𝐒𝐄𝐑𝐕𝐄𝐑"
+
+[
+{
+text:"📜 𝐌𝐘 𝐎𝐑𝐃𝐄𝐑𝐒",
+callback_data:"orders"
+},
+{
+text:"⚙️ 𝐇𝐄𝐋𝐏",
+callback_data:"help"
+}
+]
+
+]
 }
 });
 
@@ -256,9 +269,20 @@ let x = await bot.sendMessage(msg.chat.id,
 
 ━━━━━━━━━━━━━━━
 
+👤 𝐓𝐄𝐋𝐄𝐆𝐑𝐀𝐌 𝐒𝐔𝐏𝐏𝐎𝐑𝐓
+
 👉 @GODx_COBRA
-`
-);
+`,
+{
+reply_markup:{
+inline_keyboard:[[
+{
+text:"🏠 𝐇𝐎𝐌𝐄",
+callback_data:"home"
+}
+]]
+}
+});
 
 userPlan[msg.chat.id].messages = [x.message_id];
 
@@ -402,7 +426,16 @@ let txt =
 ⏰ ${latest.expiry.toLocaleString()}
 `;
 
-let x = await bot.sendMessage(id,txt);
+let x = await bot.sendMessage(id,txt,{
+reply_markup:{
+inline_keyboard:[[
+{
+text:"🏠 𝐇𝐎𝐌𝐄",
+callback_data:"home"
+}
+]]
+}
+});
 
 userPlan[id].messages = [x.message_id];
 
@@ -417,24 +450,28 @@ let id = q.from.id;
 
 bot.answerCallbackQuery(q.id);
 
-// ================= MENU =================
+// HOME
+if(d==="home"){
 
+return home(id);
+
+}
+
+// MENU
 if(d==="menu"){
 
 return showPlans(id);
 
 }
 
-// ================= ORDERS =================
-
+// ORDERS
 if(d==="orders"){
 
 return showOrders(id);
 
 }
 
-// ================= HELP =================
-
+// HELP
 if(d==="help"){
 
 await cleanChat(id);
@@ -443,19 +480,18 @@ let x = await bot.sendMessage(id,
 `
 ⚙️ 𝐂𝐎𝐁𝐑𝐀 𝐇𝐄𝐋𝐏 𝐂𝐄𝐍𝐓𝐄𝐑
 
-━━━━━━━━━━━━━━━
-
-💳 𝐏𝐀𝐘𝐌𝐄𝐍𝐓 𝐈𝐒𝐒𝐔𝐄
-
-🔑 𝐊𝐄𝐘 𝐈𝐒𝐒𝐔𝐄
-
-🛠 𝐌𝐎𝐃 / 𝐒𝐄𝐓𝐔𝐏 𝐈𝐒𝐒𝐔𝐄
-
-━━━━━━━━━━━━━━━
-
 👉 @GODx_COBRA
-`
-);
+`,
+{
+reply_markup:{
+inline_keyboard:[[
+{
+text:"🏠 𝐇𝐎𝐌𝐄",
+callback_data:"home"
+}
+]]
+}
+});
 
 userPlan[id].messages = [x.message_id];
 
@@ -463,8 +499,7 @@ return;
 
 }
 
-// ================= BUY =================
-
+// BUY
 if(d.startsWith("buy_")){
 
 await cleanChat(id);
@@ -515,8 +550,7 @@ return;
 
 }
 
-// ================= SEND SS =================
-
+// SEND SS
 if(d==="ss"){
 
 waitingSS[id]=true;
@@ -534,8 +568,7 @@ return;
 
 }
 
-// ================= APPROVE =================
-
+// APPROVE
 if(d.startsWith("approve_")){
 
 await bot.editMessageReplyMarkup(
@@ -562,6 +595,7 @@ ADMIN_ID,
 );
 }
 
+// ADMIN USED KEY
 await bot.sendMessage(
 ADMIN_ID,
 `
@@ -650,8 +684,7 @@ delete waitingSS[uid];
 
 }
 
-// ================= REJECT =================
-
+// REJECT
 if(d.startsWith("reject_")){
 
 await bot.editMessageReplyMarkup(
@@ -675,15 +708,23 @@ let x = await bot.sendMessage(uid,
 
 ⚠️ 𝐂𝐇𝐄𝐂𝐊 𝐏𝐀𝐘𝐌𝐄𝐍𝐓
 𝐀𝐍𝐃 𝐒𝐄𝐍𝐃 𝐀𝐆𝐀𝐈𝐍
-`
-);
+`,
+{
+reply_markup:{
+inline_keyboard:[[
+{
+text:"🏠 𝐇𝐎𝐌𝐄",
+callback_data:"home"
+}
+]]
+}
+});
 
 userPlan[uid].messages = [x.message_id];
 
 }
 
-// ================= ADMIN =================
-
+// ADMIN
 if(d==="addstock"){
 
 if(id!==ADMIN_ID) return;
@@ -769,68 +810,19 @@ bot.on("message", async msg=>{
 
 let id = msg.chat.id;
 
-// ================= BUTTONS =================
-
-if(msg.text==="🛒 𝐂𝐎𝐁𝐑𝐀 𝐒𝐄𝐑𝐕𝐄𝐑"){
-
-return showPlans(id);
-
-}
-
-if(msg.text==="📜 𝐌𝐘 𝐎𝐑𝐃𝐄𝐑𝐒"){
-
-return showOrders(id);
-
-}
-
-if(msg.text==="⚙️ 𝐇𝐄𝐋𝐏"){
-
-await cleanChat(id);
-
-let x = await bot.sendMessage(id,
-`
-⚙️ 𝐂𝐎𝐁𝐑𝐀 𝐇𝐄𝐋𝐏 𝐂𝐄𝐍𝐓𝐄𝐑
-
-━━━━━━━━━━━━━━━
-
-💳 𝐏𝐀𝐘𝐌𝐄𝐍𝐓 𝐈𝐒𝐒𝐔𝐄
-
-🔑 𝐊𝐄𝐘 𝐈𝐒𝐒𝐔𝐄
-
-🛠 𝐌𝐎𝐃 / 𝐒𝐄𝐓𝐔𝐏 𝐈𝐒𝐒𝐔𝐄
-
-━━━━━━━━━━━━━━━
-
-👉 @GODx_COBRA
-`
-);
-
-userPlan[id].messages = [x.message_id];
-
-return;
-
-}
-
-// ================= RANDOM MSG =================
-
+// RANDOM MSG
 if(
 msg.text &&
 !msg.text.startsWith("/") &&
-msg.text!=="🛒 𝐂𝐎𝐁𝐑𝐀 𝐒𝐄𝐑𝐕𝐄𝐑" &&
-msg.text!=="📜 𝐌𝐘 𝐎𝐑𝐃𝐄𝐑𝐒" &&
-msg.text!=="⚙️ 𝐇𝐄𝐋𝐏" &&
 !selectedPlan[id] &&
 !deleteMode[id]
 ){
-
-await cleanChat(id);
 
 return home(id);
 
 }
 
-// ================= PHOTO AUTO DETECT =================
-
+// PHOTO AUTO DETECT
 if(msg.photo){
 
 if(!waitingSS[id] && userPlan[id]){
@@ -854,6 +846,7 @@ msg.message_id
 
 await cleanChat(id);
 
+// SEND ADMIN
 await bot.sendPhoto(
 ADMIN_ID,
 msg.photo.pop().file_id,
@@ -891,6 +884,7 @@ callback_data:`reject_${id}`
 }
 );
 
+// USER PAGE
 let x = await bot.sendMessage(id,
 `
 🔥 𝐂𝐎𝐁𝐑𝐀 𝐊𝐄𝐘 𝐒𝐇𝐎𝐏 🔥
@@ -906,8 +900,32 @@ let x = await bot.sendMessage(id,
 
 ⚡ 𝐏𝐋𝐄𝐀𝐒𝐄
 𝐖𝐀𝐈𝐓 𝟒-𝟓 𝐌𝐈𝐍
-`
-);
+`,
+{
+reply_markup:{
+inline_keyboard:[
+
+[
+{
+text:"🛒 𝐂𝐎𝐁𝐑𝐀 𝐒𝐄𝐑𝐕𝐄𝐑",
+callback_data:"menu"
+}
+],
+
+[
+{
+text:"📜 𝐌𝐘 𝐎𝐑𝐃𝐄𝐑𝐒",
+callback_data:"orders"
+},
+{
+text:"⚙️ 𝐇𝐄𝐋𝐏",
+callback_data:"help"
+}
+]
+
+]
+}
+});
 
 userPlan[id].messages = [x.message_id];
 
@@ -917,8 +935,7 @@ return;
 
 }
 
-// ================= ADD STOCK =================
-
+// ADD STOCK
 if(selectedPlan[id] && msg.text){
 
 for(let k of msg.text.split("\n")){
@@ -940,8 +957,7 @@ return bot.sendMessage(id,
 "✅ 𝐒𝐓𝐎𝐂𝐊 𝐀𝐃𝐃𝐄𝐃");
 }
 
-// ================= DELETE KEY =================
-
+// DELETE KEY
 if(deleteMode[id] && msg.text){
 
 await Key.deleteOne({
