@@ -6,17 +6,21 @@ const mongoose = require("mongoose");
 const token = process.env.BOT_TOKEN || "8304628992:AAFHjdhzF33fiH2QHjQScU9lK2zgqAx7nIc";
 const ADMIN_ID = 7707237527;
 
-const MONGO_URL = "mongodb+srv://COBRA:Cobra%4012345@cluster0.uqwcyny.mongodb.net/cobra?retryWrites=true&w=majority";
+const MONGO_URL =
+"mongodb+srv://COBRA:Cobra%4012345@cluster0.uqwcyny.mongodb.net/cobra?retryWrites=true&w=majority";
 
-const CHANNEL_LINK = "https://t.me/+wRZN39fdVcRkYTM9";
+const CHANNEL_LINK =
+"https://t.me/+wRZN39fdVcRkYTM9";
+
 const UPI_ID = "godxcobra@axl";
 
-const QR_LINK = "https://images.weserv.nl/?url=raw.githubusercontent.com/sandipmeena8585-beep/cobra-bot/main/upi_qr.png";
+const QR_LINK =
+"https://images.weserv.nl/?url=raw.githubusercontent.com/sandipmeena8585-beep/cobra-bot/main/upi_qr.png";
 
 // ===== SERVER =====
 const app = express();
 
-app.get("/",(req,res)=>{
+app.get("/", (req,res)=>{
 res.send("COBRA BOT RUNNING");
 });
 
@@ -25,11 +29,11 @@ app.listen(process.env.PORT || 3000);
 // ===== BOT =====
 const bot = new TelegramBot(token,{polling:true});
 
-// ===== TELEGRAM MENU =====
+// ===== COMMAND MENU =====
 bot.setMyCommands([
 {
 command:"start",
-description:"🏠 Start Bot"
+description:"🏠 Main Menu"
 },
 {
 command:"cobra",
@@ -44,7 +48,7 @@ command:"help",
 description:"⚙️ Help Center"
 },
 {
-command:"admin",
+command:"sami",
 description:"⚙️ Admin Panel"
 }
 ]);
@@ -69,73 +73,66 @@ default:Date.now
 }
 });
 
-const User = mongoose.model("User",{
-id:Number
-});
-
 // ===== PLANS =====
 const plans = {
 
 plan1:{
-name:"⏱ 1 DAY — ₹100",
-days:1,
-price:"100"
+name:"5 HOUR - ₹40",
+days:0,
+price:"40"
 },
 
 plan2:{
-name:"⏱ 3 DAY — ₹200",
-days:3,
-price:"200"
+name:"1 DAY - ₹80",
+days:1,
+price:"80"
 },
 
 plan3:{
-name:"⏱ 7 DAY — ₹400",
-days:7,
-price:"400"
+name:"3 DAY - ₹190",
+days:3,
+price:"190"
 },
 
 plan4:{
-name:"⏱ 15 DAY — ₹600",
-days:15,
-price:"600"
+name:"7 DAY - ₹350",
+days:7,
+price:"350"
 },
 
 plan5:{
-name:"⏱ 30 DAY — ₹800",
-days:30,
-price:"800"
+name:"15 DAY - ₹590",
+days:15,
+price:"590"
 },
 
 plan6:{
-name:"⏱ 60 DAY — ₹1200",
+name:"30 DAY - ₹750",
+days:30,
+price:"750"
+},
+
+plan7:{
+name:"60 DAY - ₹1150",
 days:60,
-price:"1200"
+price:"1150"
 }
 
 };
 
 // ===== STATE =====
 let userPlan = {};
-let selectedPlan = {};
-let waitingUTR = {};
 let waitingSS = {};
+let waitingUTR = {};
+let selectedPlan = {};
 let deleteMode = {};
-
 let lockedUser = {};
 let usedUTR = new Set();
 
 // ===== START =====
-bot.onText(/\/start/, async msg => {
+bot.onText(/\/start/, async msg=>{
 
-let id = msg.chat.id;
-
-await User.updateOne(
-{id:id},
-{id:id},
-{upsert:true}
-);
-
-bot.sendMessage(id,
+bot.sendMessage(msg.chat.id,
 `🛍 𝐂𝐎𝐁𝐑𝐀 𝐊𝐄𝐘 𝐒𝐇𝐎𝐏 🛍
 
 ✨ Welcome! Pick a product below.
@@ -148,7 +145,7 @@ bot.sendMessage(id,
 
 ━━━━━━━━━━━━━━━
 
-⬅️ LEFT SIDE MENU BUTTON TAP KRO`,
+⬅️ LEFT SIDE MENU TAP KRO`,
 {
 reply_markup:{
 remove_keyboard:true
@@ -157,27 +154,33 @@ remove_keyboard:true
 
 });
 
-// ===== COBRA SERVER =====
-bot.onText(/\/cobra/, async msg => {
-
-let id = msg.chat.id;
+// ===== COBRA =====
+bot.onText(/\/cobra/, async msg=>{
 
 let keyboard = [];
 
 for(let p in plans){
 
-let stock = await Key.countDocuments({plan:p});
+let stock =
+await Key.countDocuments({plan:p});
 
 keyboard.push([
 {
-text:`${plans[p].name} | 📦 ${stock}`,
+text:`🛒 ${plans[p].name} | 📦 ${stock}`,
 callback_data:`buy_${p}`
 }
 ]);
 
 }
 
-bot.sendMessage(id,
+keyboard.push([
+{
+text:"📜 MY ORDERS",
+callback_data:"orders"
+}
+]);
+
+bot.sendMessage(msg.chat.id,
 `🛒 𝐂𝐎𝐁𝐑𝐀 𝐒𝐄𝐑𝐕𝐄𝐑
 
 👇 SELECT PLAN`,
@@ -190,16 +193,18 @@ inline_keyboard:keyboard
 });
 
 // ===== ORDERS =====
-bot.onText(/\/orders/, async msg => {
+bot.onText(/\/orders/, async msg=>{
 
-let id = msg.chat.id;
-
-let orders = await Sale.find({user:id})
+let orders =
+await Sale.find({user:msg.chat.id})
 .sort({createdAt:-1})
 .limit(5);
 
 if(!orders.length){
-return bot.sendMessage(id,"❌ NO ORDERS");
+return bot.sendMessage(
+msg.chat.id,
+"❌ NO ORDERS"
+);
 }
 
 let txt = `📜 YOUR ORDERS\n\n`;
@@ -212,21 +217,18 @@ txt +=
 🔑 KEY:
 ${o.key}
 
-⏳ EXPIRE:
-${o.expiry.toLocaleString()}
-
 ━━━━━━━━━━━━━━━
 
 `;
 
 });
 
-bot.sendMessage(id,txt);
+bot.sendMessage(msg.chat.id,txt);
 
 });
 
 // ===== HELP =====
-bot.onText(/\/help/, async msg => {
+bot.onText(/\/help/, msg=>{
 
 bot.sendMessage(msg.chat.id,
 `⚙️ HELP CENTER
@@ -244,17 +246,17 @@ bot.sendMessage(msg.chat.id,
 });
 
 // ===== MESSAGE =====
-bot.on("message", async msg => {
+bot.on("message", async msg=>{
 
 let id = msg.from.id;
 
 // ===== LOCK =====
-if(lockedUser[id]){
-return bot.sendMessage(id,
-`📬 ORDER RECEIVED
-
-✅ Payment already submitted
-⏳ Waiting for admin approval`);
+if(
+lockedUser[id] &&
+!msg.photo &&
+!waitingUTR[id]
+){
+return;
 }
 
 // ===== ADD STOCK =====
@@ -275,7 +277,8 @@ key:k.trim()
 
 selectedPlan[id]=null;
 
-return bot.sendMessage(id,"✅ STOCK ADDED");
+return bot.sendMessage(id,
+"✅ STOCK ADDED");
 
 }
 
@@ -288,7 +291,8 @@ key:msg.text.trim()
 
 deleteMode[id]=false;
 
-return bot.sendMessage(id,"🗑 KEY DELETED");
+return bot.sendMessage(id,
+"🗑 KEY DELETED");
 
 }
 
@@ -298,26 +302,29 @@ if(waitingUTR[id]){
 waitingUTR[id]=false;
 
 if(usedUTR.has(msg.text)){
-return bot.sendMessage(id,"❌ UTR ALREADY USED");
+return bot.sendMessage(id,
+"❌ UTR ALREADY USED");
 }
 
 usedUTR.add(msg.text);
 
 lockedUser[id]=true;
 
-return bot.sendMessage(ADMIN_ID,
+let x = await bot.sendMessage(
+ADMIN_ID,
 `💳 PAYMENT REQUEST
 
 ━━━━━━━━━━━━━━━
 
-USER: ${id}
+👤 USER:
+${id}
 
-PLAN:
+📦 PLAN:
 ${userPlan[id].name}
 
 ━━━━━━━━━━━━━━━
 
-UTR:
+💳 UTR:
 ${msg.text}`,
 {
 reply_markup:{
@@ -334,6 +341,7 @@ callback_data:`reject_${id}`
 }
 });
 
+return;
 }
 
 // ===== SCREENSHOT =====
@@ -342,6 +350,14 @@ if(waitingSS[id] && msg.photo){
 waitingSS[id]=false;
 
 lockedUser[id]=true;
+
+// ===== DELETE USER SCREENSHOT =====
+try{
+await bot.deleteMessage(
+id,
+msg.message_id
+);
+}catch(e){}
 
 bot.sendPhoto(
 ADMIN_ID,
@@ -352,9 +368,10 @@ caption:
 
 ━━━━━━━━━━━━━━━
 
-USER: ${id}
+👤 USER:
+${id}
 
-PLAN:
+📦 PLAN:
 ${userPlan[id].name}`,
 
 reply_markup:{
@@ -373,19 +390,17 @@ callback_data:`reject_${id}`
 );
 
 return bot.sendMessage(id,
-`📬 ORDER RECEIVED!
+`⏳ PAYMENT SENT FOR VERIFY
 
-✅ Screenshot submitted successfully!
-⏳ Waiting for approval
-
-⚡ You'll receive your key once approved!`);
+📦 PLAN:
+${userPlan[id].name}`);
 
 }
 
 });
 
 // ===== CALLBACK =====
-bot.on("callback_query", async q => {
+bot.on("callback_query", async q=>{
 
 let d = q.data;
 let id = q.from.id;
@@ -397,7 +412,7 @@ if(d.startsWith("buy_")){
 
 let p = d.split("_")[1];
 
-userPlan[id] = {
+userPlan[id]={
 ...plans[p],
 id:p
 };
@@ -406,20 +421,23 @@ return bot.sendPhoto(id,QR_LINK,{
 caption:
 `💳 PAYMENT PAGE
 
-🎮 COBRA SERVER
-⏱ PLAN: ${plans[p].name}
-💰 AMOUNT: ₹${plans[p].price}
+📦 PLAN:
+${plans[p].name}
+
+💰 PRICE:
+₹${plans[p].price}
 
 ━━━━━━━━━━━━━━━
 
-💳 PAY VIA UPI ID
+💳 PAY VIA UPI
 
 \`${UPI_ID}\`
 
 ━━━━━━━━━━━━━━━
 
-📸 Send screenshot after payment.
-⚡ Key delivered instantly after approval.`,
+📸 SEND SCREENSHOT
+OR
+💳 SEND UTR`,
 parse_mode:"Markdown",
 reply_markup:{
 inline_keyboard:[
@@ -441,6 +459,39 @@ callback_data:"utr"
 
 }
 
+// ===== ORDERS =====
+if(d==="orders"){
+
+let orders =
+await Sale.find({user:id})
+.sort({createdAt:-1})
+.limit(5);
+
+if(!orders.length){
+return bot.sendMessage(id,
+"❌ NO ORDERS");
+}
+
+let txt = `📜 YOUR ORDERS\n\n`;
+
+orders.forEach((o,i)=>{
+
+txt +=
+`${i+1}. ${o.plan}
+
+🔑 KEY:
+${o.key}
+
+━━━━━━━━━━━━━━━
+
+`;
+
+});
+
+return bot.sendMessage(id,txt);
+
+}
+
 // ===== SCREENSHOT =====
 if(d==="ss"){
 
@@ -457,7 +508,7 @@ if(d==="utr"){
 waitingUTR[id]=true;
 
 return bot.sendMessage(id,
-`💳 ENTER UTR NUMBER`);
+`💳 SEND UTR NUMBER`);
 
 }
 
@@ -474,11 +525,15 @@ message_id:q.message.message_id
 
 let uid = d.split("_")[1];
 
-let key = await Key.findOneAndDelete({
+let key =
+await Key.findOneAndDelete({
 plan:userPlan[uid].id
 });
 
 if(!key){
+
+lockedUser[uid]=false;
+
 return bot.sendMessage(
 ADMIN_ID,
 "❌ NO STOCK"
@@ -500,7 +555,7 @@ expiry:exp
 });
 
 bot.sendMessage(uid,
-`🔥 𝐄𝐍𝐉𝐎𝐘 𝐂𝐎𝐁𝐑𝐀 𝐒𝐄𝐑𝐕𝐄𝐑 🔥
+`🔥 COBRA SERVER APPROVED 🔥
 
 ━━━━━━━━━━━━━━━
 
@@ -510,19 +565,21 @@ bot.sendMessage(uid,
 
 ━━━━━━━━━━━━━━━
 
-⚡ KILL LIMIT 10 12
-🛡 LEGIT PLAY SAFE`,
+📦 PLAN:
+${userPlan[uid].name}
+
+━━━━━━━━━━━━━━━
+
+⚡ ENJOY`,
 {
 parse_mode:"Markdown",
 reply_markup:{
-inline_keyboard:[
-[
+inline_keyboard:[[
 {
 text:"📦 JOIN PAID GROUP",
 url:CHANNEL_LINK
 }
-]
-]
+]]
 }
 });
 
@@ -548,7 +605,7 @@ let uid = d.split("_")[1];
 lockedUser[uid]=false;
 
 bot.sendMessage(uid,
-`❌ PAYMENT REJECTED`);
+`❌ ORDER REJECTED`);
 
 }
 
@@ -573,12 +630,12 @@ callback_data:`plan_${p}`
 
 }
 
-// ===== PLAN =====
+// ===== PLAN SELECT =====
 if(d.startsWith("plan_")){
 
 if(id!==ADMIN_ID) return;
 
-selectedPlan[id] =
+selectedPlan[id]=
 d.replace("plan_","");
 
 return bot.sendMessage(id,
@@ -609,26 +666,20 @@ await Key.countDocuments();
 let sold =
 await Sale.countDocuments();
 
-let expired =
-await Sale.countDocuments({
-expiry:{$lt:new Date()}
-});
-
 return bot.sendMessage(id,
 `📊 ADMIN STATS
 
 ━━━━━━━━━━━━━━━
 
 📦 STOCK: ${stock}
-🔥 SOLD: ${sold}
-⏳ EXPIRED: ${expired}`);
+🔥 SOLD: ${sold}`);
 
 }
 
 });
 
-// ===== ADMIN =====
-bot.onText(/\/admin/, msg => {
+// ===== ADMIN PANEL =====
+bot.onText(/\/sami/, msg=>{
 
 if(msg.from.id!==ADMIN_ID)
 return;
