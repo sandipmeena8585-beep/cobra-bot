@@ -6,7 +6,7 @@ const mongoose = require("mongoose");
 
 const token =
 process.env.BOT_TOKEN ||
-"YOUR_BOT_TOKEN";
+"8304628992:AAFHjdhzF33fiH2QHjQScU9lK2zgqAx7nIc";
 
 const ADMIN_ID = 7707237527;
 
